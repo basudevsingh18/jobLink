@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/register.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="register">
+  <h1>Create an Account</h1>
+  <form method="post" class="register-form">
+    <label>
+      Name *
+      <input type="text" name="name" required>
+    </label>
+
+    <label>
+      Email *
+      <input type="email" name="email" required>
+    </label>
+
+    <label>
+      Password *
+      <input type="password" name="password" required>
+    </label>
+
+    <label>
+      Role *
+      <select name="role" required>
+        <option value="customer">Customer</option>
+        <option value="worker">Worker</option>
+      </select>
+    </label>
+
+    <div class="form-actions">
+      <button type="submit" class="submit">Register</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

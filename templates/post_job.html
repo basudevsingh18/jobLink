@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/post_job.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="post-job">
+  <h1>Post a Job</h1>
+  <form method="post" class="job-form">
+    <label>
+      Title *
+      <input name="title" required placeholder="e.g., Install ceiling fan">
+    </label>
+
+    <label>
+      Description *
+      <textarea name="description" rows="4" required placeholder="Brief details of the task"></textarea>
+    </label>
+
+    <label>
+      Category
+      <select name="category">
+        <option value="">Other</option>
+        {% for c in categories %}
+          <option value="{{ c }}">{{ c }}</option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <label>
+      Budget (GYD) *
+      <input name="budget" type="number" required placeholder="e.g., 6000">
+    </label>
+
+    <label>
+      Location *
+      <select name="location" required>
+        {% for l in locations %}
+          <option value="{{ l }}">{{ l }}</option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <label>
+      Contact (WhatsApp) *
+      <input name="contact" required placeholder="e.g., 600-1234 or +592 600 1234">
+    </label>
+
+    <div class="form-actions">
+      <a href="{{ url_for('jobs.list_jobs') }}" class="cancel">Cancel</a>
+      <button type="submit" class="submit">Post Job</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

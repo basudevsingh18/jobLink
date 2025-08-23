@@ -1,0 +1,56 @@
+.job-detail {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 1.5rem;
+}
+
+.job-detail h1 {
+  margin: 0 0 0.5rem;
+  font-size: 1.3rem;
+  color: #111827;
+}
+
+.meta {
+  font-size: 0.85rem;
+  color: #6b7280;
+  margin-bottom: 1rem;
+}
+
+.category {
+  font-size: 0.8rem;
+  background: #f3f4f6;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  color: #374151;
+}
+
+.budget {
+  font-size: 1rem;
+  margin-bottom: 1rem;
+  color: #111827;
+}
+
+.description {
+  margin-bottom: 1.5rem;
+  line-height: 1.5;
+  color: #374151;
+}
+
+.actions {
+  text-align: right;
+}
+
+.wa-button {
+  display: inline-block;
+  padding: 0.6rem 1.2rem;
+  background: #22c55e; /* WhatsApp green */
+  color: white;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.wa-button:hover {
+  background: #15803d;
+}

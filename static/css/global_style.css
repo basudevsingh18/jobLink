@@ -1,0 +1,184 @@
+/* === Global Reset + Base === */
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background-color: #f3f4f6;  /* very light gray */
+  color: #1f2937;             /* slate-800 */
+  line-height: 1.6;
+}
+
+a {
+  text-decoration: none;
+  color: #2563eb; /* calm blue */
+  transition: color 0.2s ease;
+}
+a:hover {
+  color: #1e40af;
+}
+
+/* === Navbar === */
+.navbar {
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 0.8rem 1.5rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+.nav-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.brand {
+  font-weight: 600;
+  font-size: 1.2rem;
+  color: #111827;
+}
+
+.nav-links a {
+  margin-left: 1rem;
+  color: #374151;
+  font-size: 0.95rem;
+}
+.nav-links a:hover {
+  color: #111827;
+}
+
+.user-info {
+  margin-left: 1rem;
+  padding: 0.25rem 0.6rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  color: #374151;
+  font-size: 0.85rem;
+}
+
+/* === Layout Container === */
+.main-container {
+  max-width: 900px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+}
+
+/* === Flash Messages === */
+.flash {
+  margin-bottom: 1rem;
+}
+.flash-message {
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+.flash-message.success {
+  background: #ecfdf5; /* subtle green background */
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+.flash-message.warning {
+  background: #fffbeb; /* soft yellow */
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+.flash-message.danger {
+  background: #fef2f2; /* soft red */
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+.flash-message.info {
+  background: #eff6ff; /* soft blue */
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+}
+
+/* === Buttons === */
+button, .btn {
+  display: inline-block;
+  padding: 0.55rem 1.1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn-primary, button[type="submit"] {
+  background: #2563eb;
+  color: #fff;
+}
+.btn-primary:hover, button[type="submit"]:hover {
+  background: #1e40af;
+}
+
+.btn-outline {
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  color: #374151;
+}
+.btn-outline:hover {
+  background: #f9fafb;
+}
+
+/* === Forms (inputs/selects/textarea) === */
+input, select, textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.55rem 0.7rem;
+  font-size: 0.95rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #111827;
+  transition: border 0.2s ease, box-shadow 0.2s ease;
+}
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+/* === Card Utility === */
+.card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+/* === Table (Admin) === */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+}
+th, td {
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: left;
+}
+thead th {
+  background: #f9fafb;
+  color: #374151;
+  font-weight: 600;
+}
+tbody tr:nth-child(even) {
+  background: #fefefe;
+}
+
+/* === Footer === */
+.footer {
+  text-align: center;
+  padding: 1rem;
+  font-size: 0.85rem;
+  color: #6b7280;
+  border-top: 1px solid #e5e7eb;
+  margin-top: 3rem;
+}

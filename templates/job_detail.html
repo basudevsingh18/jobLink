@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/job_detail.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="job-detail">
+  <h1>{{ job.title }}</h1>
+
+  <p class="meta">
+    <span class="category">{{ job.category }}</span> · 
+    {{ job.location }} · 
+    Posted {{ job.created_at.strftime('%b %d, %Y %I:%M %p') }}
+  </p>
+
+  <p class="budget">Budget: <strong>GYD {{ job.budget }}</strong></p>
+
+  <div class="description">
+    <p>{{ job.description }}</p>
+  </div>
+
+  <div class="actions">
+    <a href="{{ accept_url }}" class="wa-button">Accept via WhatsApp</a>
+  </div>
+</div>
+{% endblock %}

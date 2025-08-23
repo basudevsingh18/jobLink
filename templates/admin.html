@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="admin">
+  <div class="admin-header">
+    <h1>Admin · Jobs</h1>
+    <a href="{{ url_for('jobs.seed') }}" class="seed-link">Seed Demo Jobs</a>
+  </div>
+
+  {% if jobs %}
+    <table class="job-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Title</th>
+          <th>Category</th>
+          <th>Location</th>
+          <th>Budget</th>
+          <th>Contact</th>
+          <th>Status</th>
+          <th>Created</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for j in jobs %}
+        <tr>
+          <td>{{ j.id }}</td>
+          <td><a href="{{ url_for('jobs.job_detail', job_id=j.id) }}">{{ j.title }}</a></td>
+          <td>{{ j.category }}</td>
+          <td>{{ j.location }}</td>
+          <td>GYD {{ j.budget }}</td>
+          <td>{{ j.contact }}</td>
+          <td>{{ j.status }}</td>
+          <td>{{ j.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="empty">No jobs posted yet.</p>
+  {% endif %}
+</div>
+{% endblock %}
