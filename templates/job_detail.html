@@ -11,7 +11,7 @@
   <p class="meta">
     <span class="category">{{ job.category }}</span> · 
     {{ job.location }} · 
-    Posted {{ job.created_at.strftime('%b %d, %Y %I:%M %p') }}
+    Posted {{ created_at_display }}
   </p>
 
   <p class="budget">Budget: <strong>GYD {{ job.budget }}</strong></p>
