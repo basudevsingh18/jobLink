@@ -6,7 +6,7 @@
   background: radial-gradient(1200px 800px at 10% 10%, rgba(123,220,255,0.12), transparent 60%),
               radial-gradient(1000px 700px at 90% 20%, rgba(167,139,250,0.13), transparent 60%),
               radial-gradient(900px 600px at 50% 100%, rgba(66,183,232,0.12), transparent 60%),
-              #0b1220;
+              #f6f7fb;;
   animation: bgShift 18s ease-in-out infinite alternate;
   filter: saturate(110%);
 }
@@ -35,3 +35,5 @@
   50%  { transform: translateY(-26px) translateX(18px) scale(1.03); opacity: .8; }
   100% { transform: translateY(0) translateX(0) scale(1); opacity: .9; }
 }
+
+

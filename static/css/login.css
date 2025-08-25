@@ -1,20 +1,65 @@
-/* login.css */
-.login{
-  max-width: 620px; margin: 20px auto 0; padding: 0 20px;
+/* login.css — mirror register form styling */
+
+/* Same outer container size/margins as register */
+.login,
+.register {
+  max-width: 720px;
+  margin: 20px auto 0;
+  padding: 0 20px;
 }
-.login h1{ margin: 0 0 14px; }
-.login-form{
-  background: var(--glass); border: 1px solid rgba(255,255,255,0.10);
-  border-radius: var(--radius); padding: 18px;
-  box-shadow: var(--shadow); backdrop-filter: blur(var(--blur));
-  display: grid; gap: 12px;
+
+/* Same heading spacing */
+.login h1,
+.register h1 {
+  margin: 0 0 14px;
+}
+
+/* Make the form boxes identical */
+.login-form,
+.register-form {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 18px;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(var(--blur));
+  display: grid;
+  gap: 12px;
   animation: cardIn .4s var(--transition);
 }
-.login-form .form-actions{
-  display: flex; gap: 10px; justify-content: space-between; align-items: center; margin-top: 4px;
+
+/* Label + input stack */
+.login-form label,
+.register-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--text);
 }
-.login-form .submit{ min-width: 110px; }
-@keyframes cardIn{
-  from{ transform: translateY(8px); opacity: 0; }
-  to{ transform: translateY(0); opacity: 1; }
+
+/* Actions row alignment identical */
+.login-form .form-actions,
+.register-form .form-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  /* or flex-end to match your register */
+  align-items: center;
+  margin-top: 4px;
+}
+
+.login-form .submit,
+.register-form .submit {
+  min-width: 120px;
+}
+
+@keyframes cardIn {
+  from {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }

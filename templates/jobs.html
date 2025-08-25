@@ -25,21 +25,21 @@
 </section>
 
 {% if jobs and jobs|length > 0 %}
-  <div class="jobs-grid">
-    {% for j in jobs %}
-      <a class="card job-card" href="{{ url_for('jobs.job_detail', job_id=j.id) }}">
-        <div class="job-top">
-          <h3>{{ j.title }}</h3>
-          <span class="badge">{{ j.category or 'Other' }}</span>
-        </div>
-        <p class="desc">{{ j.description }}</p>
-        <div class="job-meta">
-          <span class="loc">{{ j.location }}</span>
-          <span class="budget">G${{ j.budget }}</span>
-        </div>
-      </a>
-    {% endfor %}
-  </div>
+<div class="jobs-grid alt">
+  {% for j in jobs %}
+    <a class="card job-card" href="{{ url_for('jobs.job_detail', job_id=j.id) }}">
+      <div class="job-top">
+        <h3>{{ j.title }}</h3>
+        <span class="badge">{{ j.category or 'Other' }}</span>
+      </div>
+      <p class="desc">{{ j.description }}</p>
+      <div class="job-meta">
+        <span class="loc">{{ j.location }}</span>
+        <span class="budget">G${{ j.budget }}</span>
+      </div>
+    </a>
+  {% endfor %}
+</div>
 {% else %}
   <div class="card empty">
     <p>No jobs found. Try a different search or category.</p>

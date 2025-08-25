@@ -1,23 +1,56 @@
-/* register.css */
-.register{
-  max-width: 720px; margin: 20px auto 0; padding: 0 20px;
+/* register.css — match login.css style */
+
+.register {
+  max-width: 620px;
+  /* match login */
+  margin: 20px auto 0;
+  padding: 0 20px;
 }
-.register h1{
+
+.register h1 {
   margin: 0 0 14px;
 }
-.register-form{
-  background: var(--glass); border: 1px solid rgba(255,255,255,0.10);
-  border-radius: var(--radius); padding: 18px;
-  box-shadow: var(--shadow); backdrop-filter: blur(var(--blur));
-  display: grid; gap: 12px;
+
+.register-form {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 18px;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(var(--blur));
+  display: grid;
+  gap: 12px;
   animation: cardIn .4s var(--transition);
 }
-.register-form label{ display: grid; gap: 6px; }
-.register-form .form-actions{
-  display: flex; gap: 10px; justify-content: flex-end; margin-top: 4px;
+
+.register-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--text);
 }
-.register-form .submit{ min-width: 120px; }
-@keyframes cardIn{
-  from{ transform: translateY(8px); opacity: 0; }
-  to{ transform: translateY(0); opacity: 1; }
+
+.register-form .form-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  /* match login */
+  align-items: center;
+  margin-top: 4px;
+}
+
+.register-form .submit {
+  min-width: 110px;
+  /* match login */
+}
+
+@keyframes cardIn {
+  from {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
