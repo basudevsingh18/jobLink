@@ -5,51 +5,53 @@
 {% endblock %}
 
 {% block content %}
-<div class="post-job">
+<div class="post">
   <h1>Post a Job</h1>
-  <form method="post" class="job-form">
-    <label>
-      Title *
-      <input name="title" required placeholder="e.g., Install ceiling fan">
-    </label>
+  <form method="post" class="post-form">
+    <div class="grid two">
+      <label>
+        Title *
+        <input type="text" name="title" value="{{ (form.title or '') if form else '' }}" required>
+      </label>
+      <label>
+        Category
+        <select name="category">
+          <option value="">Select…</option>
+          {% for c in categories %}
+            <option value="{{ c }}" {% if form and form.category == c %}selected{% endif %}>{{ c }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </div>
 
     <label>
       Description *
-      <textarea name="description" rows="4" required placeholder="Brief details of the task"></textarea>
+      <textarea name="description" rows="4" required>{{ (form.description or '') if form else '' }}</textarea>
     </label>
 
-    <label>
-      Category
-      <select name="category">
-        <option value="">Other</option>
-        {% for c in categories %}
-          <option value="{{ c }}">{{ c }}</option>
-        {% endfor %}
-      </select>
-    </label>
-
-    <label>
-      Budget (GYD) *
-      <input name="budget" type="number" required placeholder="e.g., 6000">
-    </label>
-
-    <label>
-      Location *
-      <select name="location" required>
-        {% for l in locations %}
-          <option value="{{ l }}">{{ l }}</option>
-        {% endfor %}
-      </select>
-    </label>
-
-    <label>
-      Contact (WhatsApp) *
-      <input name="contact" required placeholder="e.g., 600-1234 or +592 600 1234">
-    </label>
+    <div class="grid three">
+      <label>
+        Budget (G$) *
+        <input type="number" name="budget" min="0" step="1" value="{{ (form.budget or '') if form else '' }}" required>
+      </label>
+      <label>
+        Location *
+        <select name="location" required>
+          <option value="">Select…</option>
+          {% for l in locations %}
+            <option value="{{ l }}" {% if form and form.location == l %}selected{% endif %}>{{ l }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>
+        Contact (592xxxxxxx) *
+        <input type="text" name="contact" value="{{ (form.contact or '') if form else '' }}" required>
+      </label>
+    </div>
 
     <div class="form-actions">
-      <a href="{{ url_for('jobs.list_jobs') }}" class="cancel">Cancel</a>
-      <button type="submit" class="submit">Post Job</button>
+      <button type="submit" class="submit">Publish</button>
+      <a href="{{ url_for('jobs.list_jobs') }}" class="btn ghost">Cancel</a>
     </div>
   </form>
 </div>

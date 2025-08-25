@@ -1,15 +1,39 @@
 # microjobs/routes.py
+"""
+Job routes (Flask) backed by PostgREST.
+
+- Lists/searches jobs with optional filters.
+- Posts a job (customer-only) via PostgREST.
+- Shows job detail with a WhatsApp deep link.
+- Accept flow currently just redirects to WhatsApp (logging to DB comes later).
+- "My Jobs" placeholder until JWT/RLS + customer_id filtering is enabled.
+
+Notes:
+- We import the api MODULE (not functions) so tests can monkeypatch it cleanly.
+- PostgREST returns ISO timestamps (strings). We precompute a display string.
+"""
+
+from __future__ import annotations
+
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from urllib.parse import quote_plus
 from datetime import datetime
+from typing import Optional
 from . import api
+
 bp = Blueprint("jobs", __name__)
 
-JOBS = []
-ACCEPTED_JOBS = []
-NEXT_ID = 1
-NEXT_ACCEPT_ID = 1
+# --------------------------------------------------------------------------------------
+# Back-compat placeholders (legacy tests may clear these). They are not used by routes.
+# --------------------------------------------------------------------------------------
+JOBS: list[dict] = []
+ACCEPTED_JOBS: list[dict] = []
+NEXT_ID: int = 1
+NEXT_ACCEPT_ID: int = 1
 
+# --------------------------------------------------------------------------------------
+# Static lists feeding dropdowns/filters
+# --------------------------------------------------------------------------------------
 CATEGORIES = [
     "Home Repairs",
     "Electrical",
@@ -29,23 +53,45 @@ LOCATIONS = [
     "Berbice",
 ]
 
-# --------------------
+# --------------------------------------------------------------------------------------
 # Helpers
-# --------------------
-def wa_link(phone: str, message: str):
-    """Generate WhatsApp deep link with message prefilled."""
-    digits = "".join(ch for ch in phone if ch.isdigit())
+# --------------------------------------------------------------------------------------
+def wa_link(phone: str, message: str) -> str:
+    """Generate WhatsApp deep link with a prefilled message."""
+    digits = "".join(ch for ch in (phone or "") if ch.isdigit())
     if digits and not digits.startswith("592"):
-        digits = "592" + digits
+        # treat 7-digit local numbers as Guyana numbers and prefix 592
+        if len(digits) == 7:
+            digits = "592" + digits
     return f"https://wa.me/{digits}?text={quote_plus(message)}"
 
-def require_login():
+def normalize_phone(raw: str) -> Optional[str]:
+    """Return normalized E.164-ish local number or None if invalid/empty."""
+    digits = "".join(ch for ch in (raw or "") if ch.isdigit())
+    if not digits:
+        return None
+    if len(digits) == 7:
+        digits = "592" + digits
+    return digits
+
+def friendly_datetime(iso_str: Optional[str]) -> str:
+    """Render ISO timestamp strings nicely; return original if parsing fails."""
+    if not iso_str:
+        return ""
+    try:
+        # Handle 'Z' and timezone offsets
+        dt = datetime.fromisoformat(iso_str.replace("Z", "+00:00"))
+        return dt.strftime("%b %d, %Y %I:%M %p")
+    except Exception:
+        return iso_str
+
+def require_login() -> bool:
     if not session.get("user_id"):
         flash("Please log in to continue.", "warning")
         return False
     return True
 
-def require_role(role: str):
+def require_role(role: str) -> bool:
     if not session.get("user_id"):
         flash("Please log in to continue.", "warning")
         return False
@@ -54,13 +100,14 @@ def require_role(role: str):
         return False
     return True
 
-# --------------------
-# Routes
-# --------------------
 
+# --------------------------------------------------------------------------------------
+# Routes
+# --------------------------------------------------------------------------------------
 @bp.route("/")
 def home():
     return redirect(url_for("jobs.list_jobs"))
+
 
 @bp.route("/jobs")
 def list_jobs():
@@ -69,29 +116,28 @@ def list_jobs():
     - q: search in title OR description (ILIKE)
     - category: exact match
     - location: exact match
-    Sorted newest-first by created_at (if present).
+    Sorted newest-first by created_at (then id).
     """
-    q = request.args.get("q", "").strip()
-    cat = request.args.get("category", "").strip()
-    loc = request.args.get("location", "").strip()
+    q = (request.args.get("q") or "").strip()
+    cat = (request.args.get("category") or "").strip()
+    loc = (request.args.get("location") or "").strip()
 
-    # Build PostgREST query params
-    params = {}
+    params = {
+        # Ask only for the columns we render
+        "select": "id,title,description,category,location,budget,contact,created_at",
+        "order": "created_at.desc,id.desc",
+        # optional: limit/offset could be added for pagination
+        # "limit": 50,
+        # "offset": 0,
+    }
 
-    # Return selected columns explicitly (safer if table evolves)
-    params["select"] = "id,title,description,category,location,budget,contact,created_at"
-
-    # Filters
     if q:
-        # or=() syntax with ilike wildcards
+        # OR filter with ILIKE wildcards
         params["or"] = f"(title.ilike.*{q}*,description.ilike.*{q}*)"
     if cat:
         params["category"] = f"eq.{cat}"
     if loc:
         params["location"] = f"eq.{loc}"
-
-    # Order newest first (created_at desc if column exists; id desc as fallback)
-    params["order"] = "created_at.desc,id.desc"
 
     try:
         jobs = api.list_jobs_api(params=params)
@@ -104,21 +150,16 @@ def list_jobs():
         jobs=jobs,
         categories=CATEGORIES,
         locations=LOCATIONS,
-        q=q, cat=cat, loc=loc
+        q=q, cat=cat, loc=loc,
     )
+
 
 @bp.route("/post-job", methods=["GET", "POST"])
 def post_job():
-    # helper: normalize a GY phone for WhatsApp / storage
-    def _normalize_phone(raw: str) -> str | None:
-        digits = "".join(ch for ch in (raw or "") if ch.isdigit())
-        if not digits:
-            return None
-        # If 7-digit local, prefix 592
-        if len(digits) == 7:
-            digits = "592" + digits
-        return digits
-
+    """
+    Customer-only form → creates a job row via PostgREST.
+    Dev mode: anon write must be allowed, or use JWT later.
+    """
     if request.method == "GET":
         if not require_role("customer"):
             return redirect(url_for("auth.login"))
@@ -128,6 +169,7 @@ def post_job():
     if not require_role("customer"):
         return redirect(url_for("auth.login"))
 
+    # Read & validate
     title = (request.form.get("title") or "").strip()
     description = (request.form.get("description") or "").strip()
     category = (request.form.get("category") or "Other").strip()
@@ -135,14 +177,12 @@ def post_job():
     location = (request.form.get("location") or "").strip()
     contact_raw = (request.form.get("contact") or "").strip()
 
-    # Basic presence validation
     if not all([title, description, budget_raw, location, contact_raw]):
         flash("Please fill in all required fields.", "warning")
         return render_template("post_job.html",
                                categories=CATEGORIES, locations=LOCATIONS,
                                form=request.form)
 
-    # Budget must be an integer >= 0
     try:
         budget = int(budget_raw)
         if budget < 0:
@@ -153,15 +193,13 @@ def post_job():
                                categories=CATEGORIES, locations=LOCATIONS,
                                form=request.form)
 
-    # Normalize contact number
-    contact = _normalize_phone(contact_raw)
+    contact = normalize_phone(contact_raw)
     if not contact:
         flash("Please enter a valid contact number.", "warning")
         return render_template("post_job.html",
                                categories=CATEGORIES, locations=LOCATIONS,
                                form=request.form)
 
-    # Build payload for PostgREST
     payload = {
         "title": title,
         "description": description,
@@ -169,9 +207,9 @@ def post_job():
         "budget": budget,
         "location": location,
         "contact": contact,
-        # include ownership so we can support /my-jobs later via RLS/JWT
-        "customer_id": session.get("user_id"),
         "status": "open",
+        # When JWT/RLS is enabled, this will be set server-side from JWT claims.
+        "customer_id": session.get("user_id"),
     }
 
     try:
@@ -180,24 +218,18 @@ def post_job():
         flash("Your job was posted!", "success")
         return redirect(url_for("jobs.job_detail", job_id=new_id))
     except Exception as e:
-        # Common causes: PostgREST permissions (INSERT not allowed),
-        # missing columns, or connectivity.
         flash(f"Failed to post job: {e}", "danger")
         return render_template("post_job.html",
                                categories=CATEGORIES, locations=LOCATIONS,
                                form=request.form)
 
-@bp.route("/job/<int:job_id>")
-def job_detail(job_id):
-    # helpers
-    def _normalize_phone(raw: str) -> str | None:
-        digits = "".join(ch for ch in (raw or "") if ch.isdigit())
-        if not digits:
-            return None
-        if len(digits) == 7:
-            digits = "592" + digits
-        return digits
 
+@bp.route("/job/<int:job_id>")
+def job_detail(job_id: int):
+    """
+    Show job detail + WhatsApp deep link.
+    Also fetch a few related jobs (same category) if available.
+    """
     try:
         job = api.get_job_api(job_id)
     except Exception as e:
@@ -208,55 +240,48 @@ def job_detail(job_id):
         flash("Job not found.", "danger")
         return redirect(url_for("jobs.list_jobs"))
 
-    # Safe fields
-    title = job.get("title", "").strip()
-    contact = _normalize_phone(job.get("contact", ""))
+    # Precompute display fields
+    title = (job.get("title") or "").strip()
+    contact_norm = normalize_phone(job.get("contact", ""))
+    whatsapp = wa_link(contact_norm, f"Hi, I saw your task '{title}' on JobLink. I'm interested. Is it still available?") if contact_norm else None
     budget = job.get("budget")
-    created_at = job.get("created_at")  # ISO string from PostgREST; show raw for now
+    budget_display = f"G${budget:,}" if isinstance(budget, int) else (budget or "")
+    created_at_display = friendly_datetime(job.get("created_at"))
 
-    # WhatsApp link (only if we have a valid contact)
-    msg = f"Hi, I saw your task '{title}' on JobLink. I'm interested. Is it still available?"
-    whatsapp = wa_link(contact, msg) if contact else None
-
-    # Keep accept URL for later (when accepted_jobs logging is wired)
-    accept_url = url_for("jobs.accept_job", job_id=job_id)
-
-    # Try to load a few related jobs by category (exclude current)
+    # Related jobs (best-effort; ignore errors)
     related = []
     try:
         cat = (job.get("category") or "").strip()
         if cat:
-            params = {
+            related = api.list_jobs_api(params={
                 "select": "id,title,location,budget,created_at",
                 "category": f"eq.{cat}",
                 "id": f"neq.{job_id}",
                 "order": "created_at.desc,id.desc",
                 "limit": 5,
-            }
-            related = list_jobs_api(params=params)
+            })
     except Exception:
         related = []
 
-    # Friendly budget (optional)
-    budget_display = f"G${budget:,}" if isinstance(budget, int) else (budget or "")
+    # Keep accept URL (will log to DB later when accepted_jobs is ready)
+    accept_url = url_for("jobs.accept_job", job_id=job_id)
 
     return render_template(
         "job_detail.html",
         job=job,
-        whatsapp=whatsapp,          # None if no contact → template can hide button
+        whatsapp=whatsapp,                # None → template can hide the button
         accept_url=accept_url,
         budget_display=budget_display,
-        created_at_display=created_at,
-        related_jobs=related,       # show a small list/cards if available
+        created_at_display=created_at_display,
+        related_jobs=related,
     )
 
 
 @bp.route("/job/<int:job_id>/accept")
-def accept_job(job_id):
+def accept_job(job_id: int):
     """
-    Current minimal API mode:
-    - Require worker login (UX).
-    - Redirect to WhatsApp without server-side logging (until accepted_jobs table & JWT are added).
+    Worker-only accept flow.
+    For now: just open WhatsApp; DB logging will come with accepted_jobs + JWT.
     """
     if not require_role("worker"):
         return redirect(url_for("auth.login"))
@@ -271,45 +296,61 @@ def accept_job(job_id):
         flash("Job not found.", "danger")
         return redirect(url_for("jobs.list_jobs"))
 
-    msg = f"Hi, I saw your task '{job.get('title','')}' on JobLink. I'm interested. Is it still available?"
-    whatsapp = wa_link(job.get("contact", ""), msg)
+    whatsapp = wa_link(
+        normalize_phone(job.get("contact", "")) or "",
+        f"Hi, I saw your task '{job.get('title','')}' on JobLink. I'm interested. Is it still available?",
+    )
     flash("Opening WhatsApp…", "info")
     return redirect(whatsapp)
+
 
 @bp.route("/my-jobs")
 def my_jobs():
     """
-    Placeholder in API-only (anon) mode:
-    Without a customer_id column + JWT/RLS, we can’t query ownership.
-    Show a friendly note for now.
+    Placeholder until JWT/RLS:
+    - Without server-issued claims, we can’t reliably filter by customer_id.
+    - Show a friendly note and list all jobs as a fallback.
     """
     if not require_role("customer"):
         return redirect(url_for("auth.login"))
+
     flash("My Jobs requires account-linked posting. Coming soon with API auth.", "info")
-    # Show all jobs as a fallback (or filter by location/category if desired)
     try:
-        jobs = list_jobs_api(params={"select": "id,title,description,category,location,budget,contact,created_at",
-                                     "order": "created_at.desc,id.desc"})
+        jobs = api.list_jobs_api(params={
+            "select": "id,title,description,category,location,budget,contact,created_at",
+            "order": "created_at.desc,id.desc"
+        })
     except Exception:
         jobs = []
-    return render_template("jobs.html", jobs=jobs, categories=CATEGORIES, locations=LOCATIONS, q="", cat="", loc="")
+
+    return render_template(
+        "jobs.html",
+        jobs=jobs,
+        categories=CATEGORIES,
+        locations=LOCATIONS,
+        q="", cat="", loc=""
+    )
+
 
 @bp.route("/admin")
 def admin():
-    # Minimal: just list jobs newest-first
+    """Simple admin list for now (no restriction yet)."""
     try:
-        jobs = list_jobs_api(params={"select": "id,title,description,category,location,budget,contact,created_at",
-                                     "order": "created_at.desc,id.desc"})
+        jobs = api.list_jobs_api(params={
+            "select": "id,title,description,category,location,budget,contact,created_at",
+            "order": "created_at.desc,id.desc"
+        })
     except Exception as e:
         flash(f"Could not load admin list: {e}", "danger")
         jobs = []
     return render_template("admin.html", jobs=jobs)
 
+
 @bp.route("/seed")
 def seed():
     """
-    With PostgREST, seeding should be done by SQL in db/init/*.sql on first boot.
-    Keep this endpoint to avoid breaking links; just inform the user.
+    Seeding is handled by SQL in db/init/*.sql on first DB startup.
+    Keep endpoint for UX continuity.
     """
     flash("Seeding is handled by the database on first startup.", "info")
     return redirect(url_for("jobs.list_jobs"))

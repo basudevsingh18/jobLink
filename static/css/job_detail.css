@@ -1,56 +1,47 @@
-.job-detail {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  padding: 1.5rem;
+/* job_detail.css */
+.detail{ max-width: 900px; margin: 14px auto 0; }
+.detail-head{
+  display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: start;
+  border-bottom: 1px dashed rgba(255,255,255,0.12); padding-bottom: 10px;
+}
+.title-col h1{ margin: 0 0 6px; font-size: clamp(22px, 4vw, 28px); }
+.chips{ display: flex; gap: 8px; flex-wrap: wrap; }
+.chip{
+  padding: 6px 10px; border-radius: 999px; font-size: .8rem;
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+  color: #06222c; font-weight: 800; border: 1px solid rgba(255,255,255,0.12);
+}
+.chip.soft{
+  background: var(--glass); color: var(--text);
 }
 
-.job-detail h1 {
-  margin: 0 0 0.5rem;
-  font-size: 1.3rem;
-  color: #111827;
+.price{
+  text-align: right; display: grid; gap: 2px; justify-items: end;
+}
+.price .amount{ font-weight: 900; font-size: 1.3rem; }
+.price .label{ color: var(--muted); font-size: .85rem; }
+
+.detail-body{ margin-top: 10px; }
+.detail-body p{ margin: 0 0 12px; color: var(--text); }
+.detail-body .meta{ color: var(--muted); display: flex; gap: 12px; font-size: .92rem; }
+
+.detail-actions{
+  display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap;
 }
 
-.meta {
-  font-size: 0.85rem;
-  color: #6b7280;
-  margin-bottom: 1rem;
+.related{ max-width: 1100px; margin: 18px auto 0; padding: 0 20px; }
+.related h3{ margin: 0 0 10px; }
+.related-grid{
+  display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px;
 }
+.rel{ text-decoration: none; }
+.rel-top h4{ margin: 0 0 6px; }
+.rel-meta{ display: flex; justify-content: space-between; color: var(--muted); }
 
-.category {
-  font-size: 0.8rem;
-  background: #f3f4f6;
-  padding: 0.2rem 0.5rem;
-  border-radius: 4px;
-  color: #374151;
+@media (max-width: 900px){
+  .related-grid{ grid-template-columns: 1fr 1fr; }
 }
-
-.budget {
-  font-size: 1rem;
-  margin-bottom: 1rem;
-  color: #111827;
-}
-
-.description {
-  margin-bottom: 1.5rem;
-  line-height: 1.5;
-  color: #374151;
-}
-
-.actions {
-  text-align: right;
-}
-
-.wa-button {
-  display: inline-block;
-  padding: 0.6rem 1.2rem;
-  background: #22c55e; /* WhatsApp green */
-  color: white;
-  border-radius: 4px;
-  font-size: 0.9rem;
-  font-weight: 500;
-}
-
-.wa-button:hover {
-  background: #15803d;
+@media (max-width: 620px){
+  .detail-head{ grid-template-columns: 1fr; }
+  .related-grid{ grid-template-columns: 1fr; }
 }

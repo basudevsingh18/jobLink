@@ -6,7 +6,7 @@
 
 {% block content %}
 <div class="login">
-  <h1>Login</h1>
+  <h1>Welcome back</h1>
   <form method="post" class="login-form">
     <label>
       Email *
@@ -20,11 +20,8 @@
 
     <div class="form-actions">
       <button type="submit" class="submit">Login</button>
+      <a class="btn ghost" href="{{ url_for('auth.register') }}">Create an account</a>
     </div>
   </form>
-
-  <p class="register-link">
-    Don’t have an account? <a href="{{ url_for('auth.register') }}">Register here</a>.
-  </p>
 </div>
 {% endblock %}

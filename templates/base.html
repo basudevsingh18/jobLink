@@ -3,17 +3,25 @@
   <head>
     <meta charset="utf-8">
     <title>JobLink</title>
+    <!-- New design: completely replaced styles -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/global_style.css') }}">
     {% block extra_css %}{% endblock %}
   </head>
   <body>
+    <!-- Animated background layer -->
+    <div class="bg-gradient"></div>
+    <div class="bg-blobs">
+      <span class="blob b1"></span>
+      <span class="blob b2"></span>
+      <span class="blob b3"></span>
+    </div>
+
     <nav class="navbar">
       <div class="nav-container">
         <a class="brand" href="{{ url_for('jobs.list_jobs') }}">JobLink</a>
         <div class="nav-links">
-          <!-- Always visible -->
-          <a href="{{ url_for('jobs.list_jobs') }}">Jobs</a>
+          <a class="{% if request.endpoint == 'jobs.list_jobs' %}active{% endif %}" href="{{ url_for('jobs.list_jobs') }}">Jobs</a>
 
           {% if session.get('user_id') %}
             <span class="user-info">
@@ -21,24 +29,58 @@
             </span>
 
             {% if session.get('role') == 'customer' %}
-              <a href="{{ url_for('jobs.my_jobs') }}">My Jobs</a>
-              <a href="{{ url_for('jobs.post_job') }}">Post Job</a>
+              <a class="{% if request.endpoint == 'jobs.my_jobs' %}active{% endif %}" href="{{ url_for('jobs.my_jobs') }}">My Jobs</a>
+              <a class="cta-link {% if request.endpoint == 'jobs.post_job' %}active{% endif %}" href="{{ url_for('jobs.post_job') }}">Post Job</a>
             {% endif %}
 
             {% if session.get('role') == 'admin' %}
-              <a href="{{ url_for('jobs.admin') }}">Admin</a>
+              <a class="{% if request.endpoint == 'jobs.admin' %}active{% endif %}" href="{{ url_for('jobs.admin') }}">Admin</a>
             {% endif %}
 
             <a href="{{ url_for('auth.logout') }}">Logout</a>
           {% else %}
-            <a href="{{ url_for('auth.login') }}">Login</a>
-            <a href="{{ url_for('auth.register') }}">Register</a>
+            <a class="{% if request.endpoint == 'auth.login' %}active{% endif %}" href="{{ url_for('auth.login') }}">Login</a>
+            <a class="cta-link {% if request.endpoint == 'auth.register' %}active{% endif %}" href="{{ url_for('auth.register') }}">Register</a>
           {% endif %}
+          <span class="nav-underline"></span>
         </div>
       </div>
     </nav>
 
-    <main class="main-container">
+    {# Landing hero: shows on Jobs page when not searching/filtering. #}
+    {% set show_hero = (request.endpoint == 'jobs.list_jobs' and not (request.args.get('q') or request.args.get('category') or request.args.get('location'))) %}
+    {% if show_hero %}
+      <header class="hero">
+        <div class="hero-inner">
+          <h1>Find trusted help. <span class="sparkle">Fast.</span></h1>
+          <p class="hero-sub">JobLink connects customers and skilled workers across Guyana—quickly, simply, and safely.</p>
+          <div class="hero-actions">
+            <a class="btn primary" href="{{ url_for('jobs.list_jobs') }}#results">Browse Jobs</a>
+            {% if session.get('role') == 'customer' %}
+              <a class="btn ghost" href="{{ url_for('jobs.post_job') }}">Post a Job</a>
+            {% else %}
+              <a class="btn ghost" href="{{ url_for('auth.register') }}">Get Started</a>
+            {% endif %}
+          </div>
+          <div class="hero-stats">
+            <div class="stat">
+              <span class="num">24/7</span>
+              <span class="label">Requests</span>
+            </div>
+            <div class="stat">
+              <span class="num">G$</span>
+              <span class="label">Upfront budgets</span>
+            </div>
+            <div class="stat">
+              <span class="num">592</span>
+              <span class="label">WhatsApp contact</span>
+            </div>
+          </div>
+        </div>
+      </header>
+    {% endif %}
+
+    <main class="main-container" id="results">
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
           <div class="flash">
@@ -52,7 +94,7 @@
     </main>
 
     <footer class="footer">
-      <p>© 2025 JobLink</p>
+      <p>© 2025 JobLink — Built for Guyana</p>
     </footer>
   </body>
 </html>

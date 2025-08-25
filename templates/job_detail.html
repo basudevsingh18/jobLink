@@ -5,23 +5,56 @@
 {% endblock %}
 
 {% block content %}
-<div class="job-detail">
-  <h1>{{ job.title }}</h1>
+<article class="detail card">
+  <header class="detail-head">
+    <div class="title-col">
+      <h1>{{ job.title }}</h1>
+      <div class="chips">
+        <span class="chip">{{ job.category or 'Other' }}</span>
+        <span class="chip soft">{{ job.location }}</span>
+      </div>
+    </div>
+    <div class="price">
+      <span class="amount">{{ budget_display }}</span>
+      <span class="label">Budget</span>
+    </div>
+  </header>
 
-  <p class="meta">
-    <span class="category">{{ job.category }}</span> · 
-    {{ job.location }} · 
-    Posted {{ created_at_display }}
-  </p>
-
-  <p class="budget">Budget: <strong>GYD {{ job.budget }}</strong></p>
-
-  <div class="description">
+  <section class="detail-body">
     <p>{{ job.description }}</p>
-  </div>
+    <div class="meta">
+      <span>Posted {{ created_at_display }}</span>
+      {% if job.status %}<span>Status: {{ job.status }}</span>{% endif %}
+    </div>
+  </section>
 
-  <div class="actions">
-    <a href="{{ accept_url }}" class="wa-button">Accept via WhatsApp</a>
-  </div>
-</div>
+  <footer class="detail-actions">
+    {% if whatsapp %}
+      <a class="btn primary" href="{{ whatsapp }}" target="_blank" rel="noopener">Message on WhatsApp</a>
+    {% endif %}
+    <a class="btn ghost" href="{{ url_for('jobs.list_jobs') }}">Back to Jobs</a>
+    {% if session.get('role') == 'worker' %}
+      <a class="btn" href="{{ accept_url }}">Accept & Message</a>
+    {% endif %}
+  </footer>
+</article>
+
+{% if related_jobs and related_jobs|length %}
+  <section class="related">
+    <h3>Similar tasks</h3>
+    <div class="related-grid">
+      {% for r in related_jobs %}
+        <a class="card rel" href="{{ url_for('jobs.job_detail', job_id=r.id) }}">
+          <div class="rel-top">
+            <h4>{{ r.title }}</h4>
+          </div>
+          <div class="rel-meta">
+            <span class="loc">{{ r.location }}</span>
+            <span class="budget">G${{ r.budget }}</span>
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+  </section>
+{% endif %}
 {% endblock %}
