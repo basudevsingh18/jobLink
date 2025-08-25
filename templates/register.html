@@ -20,7 +20,7 @@
 
     <label>
       Password *
-      <input type="password" name="password" required>
+      <input type="password" name="password" required minlength="8">
     </label>
 
     <label>
@@ -30,6 +30,14 @@
         <option value="worker">Worker</option>
       </select>
     </label>
+
+<label class="terms">
+  <input type="checkbox" name="accept_terms" required> I accept the <a href="{{ url_for('pages.terms') }}">Terms of Service</a>
+</label>
+
+
+    {# Optional: place for CAPTCHA widget if you enable later #}
+    {# <div class="captcha">CAPTCHA HERE</div> #}
 
     <div class="form-actions">
       <button type="submit" class="submit">Register</button>

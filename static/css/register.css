@@ -54,3 +54,15 @@
     opacity: 1;
   }
 }
+
+
+  .register-form label.terms{
+    display:flex;              /* override any block/column label styles */
+    flex-direction:row;
+    align-items:center;
+    gap:.5rem;
+  }
+  .register-form label.terms input[type="checkbox"]{
+    margin:0;                  /* remove any top/bottom margin pushing it up/down */
+    width:auto;                /* override any 100% width rules */
+  }

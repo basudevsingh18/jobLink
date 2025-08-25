@@ -63,3 +63,17 @@
     opacity: 1;
   }
 }
+
+
+  .forgot-password {
+    margin-top: .5rem;
+    text-align: right;
+  }
+  .forgot-password a {
+    font-size: 0.9rem;
+    color: #2f5aa8;
+    text-decoration: none;
+  }
+  .forgot-password a:hover {
+    text-decoration: underline;
+  }
