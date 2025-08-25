@@ -22,9 +22,7 @@ from typing import Optional
 from . import api
 from werkzeug.security import generate_password_hash, check_password_hash
 
-
 bp = Blueprint("jobs", __name__)
-
 
 # --------------------------------------------------------------------------------------
 # Back-compat placeholders (legacy tests may clear these). They are not used by routes.

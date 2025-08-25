@@ -28,10 +28,8 @@ def _f(field: str) -> str:
     """Read + trim a form field."""
     return (request.form.get(field) or "").strip()
 
-
 def _hash_password(pw: str) -> str:
     return generate_password_hash(pw)
-
 
 # -----------------------------
 # Routes
@@ -93,7 +91,6 @@ def register():
 
     # GET
     return render_template("register.html")
-
 
 @bp.route("/login", methods=["GET", "POST"])
 def login():

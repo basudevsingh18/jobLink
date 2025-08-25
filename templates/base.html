@@ -23,9 +23,9 @@
     <div class="nav-container">
       <a class="brand" href="{{ url_for('jobs.list_jobs') }}">JobLink</a>
       <div class="nav-links">
-        <!-- <a class="{% if request.endpoint == 'jobs.list_jobs' %}active{% endif %}" href="{{ url_for('jobs.list_jobs') }}">Jobs</a> -->
+        <a class="{% if request.endpoint == 'jobs.list_jobs' %}active{% endif %}" href="{{ url_for('jobs.list_jobs') }}">Jobs</a>
 
-        <!-- {% if session.get('user_id') %} -->
+        {% if session.get('user_id') %}
 
 
         {% if session.get('role') == 'customer' %}
