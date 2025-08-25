@@ -108,51 +108,19 @@ def require_role(role: str) -> bool:
 def home():
     return redirect(url_for("jobs.list_jobs"))
 
-
 @bp.route("/jobs")
 def list_jobs():
-    """
-    Fetch from PostgREST with optional filters:
-    - q: search in title OR description (ILIKE)
-    - category: exact match
-    - location: exact match
-    Sorted newest-first by created_at (then id).
-    """
-    q = (request.args.get("q") or "").strip()
-    cat = (request.args.get("category") or "").strip()
-    loc = (request.args.get("location") or "").strip()
-
-    params = {
-        # Ask only for the columns we render
-        "select": "id,title,description,category,location,budget,contact,created_at",
-        "order": "created_at.desc,id.desc",
-        # optional: limit/offset could be added for pagination
-        # "limit": 50,
-        # "offset": 0,
-    }
-
-    if q:
-        # OR filter with ILIKE wildcards
-        params["or"] = f"(title.ilike.*{q}*,description.ilike.*{q}*)"
-    if cat:
-        params["category"] = f"eq.{cat}"
-    if loc:
-        params["location"] = f"eq.{loc}"
+    page = int(request.args.get("page", 1))
+    q = request.args.get("q") or None
+    status = request.args.get("status") or None
 
     try:
-        jobs = api.list_jobs_api(params=params)
+        rows, total = api.list_jobs_api(q=q, status=status, page=page, page_size=20)
     except Exception as e:
         flash(f"Could not load jobs: {e}", "danger")
-        jobs = []
+        return render_template("jobs.html", jobs=[], total=0, page=page)
 
-    return render_template(
-        "jobs.html",
-        jobs=jobs,
-        categories=CATEGORIES,
-        locations=LOCATIONS,
-        q=q, cat=cat, loc=loc,
-    )
-
+    return render_template("jobs.html", jobs=rows, total=total or len(rows), page=page)
 
 @bp.route("/post-job", methods=["GET", "POST"])
 def post_job():
@@ -223,7 +191,6 @@ def post_job():
                                categories=CATEGORIES, locations=LOCATIONS,
                                form=request.form)
 
-
 @bp.route("/job/<int:job_id>")
 def job_detail(job_id: int):
     """
@@ -276,7 +243,6 @@ def job_detail(job_id: int):
         related_jobs=related,
     )
 
-
 @bp.route("/job/<int:job_id>/accept")
 def accept_job(job_id: int):
     """
@@ -302,7 +268,6 @@ def accept_job(job_id: int):
     )
     flash("Opening WhatsApp…", "info")
     return redirect(whatsapp)
-
 
 @bp.route("/my-jobs")
 def my_jobs():
@@ -331,7 +296,6 @@ def my_jobs():
         q="", cat="", loc=""
     )
 
-
 @bp.route("/admin")
 def admin():
     """Simple admin list for now (no restriction yet)."""
@@ -344,7 +308,6 @@ def admin():
         flash(f"Could not load admin list: {e}", "danger")
         jobs = []
     return render_template("admin.html", jobs=jobs)
-
 
 @bp.route("/seed")
 def seed():

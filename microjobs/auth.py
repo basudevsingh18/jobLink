@@ -16,6 +16,7 @@ TODO (production):
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 import hashlib
 from . import api  # PostgREST helper module (microjobs/api.py)
+from werkzeug.security import generate_password_hash, check_password_hash
 
 bp = Blueprint("auth", __name__, url_prefix="/auth")
 
@@ -27,9 +28,9 @@ def _f(field: str) -> str:
     """Read + trim a form field."""
     return (request.form.get(field) or "").strip()
 
+
 def _hash_password(pw: str) -> str:
-    """Dev-only password hashing (SHA-256)."""
-    return hashlib.sha256(pw.encode("utf-8")).hexdigest()
+    return generate_password_hash(pw)
 
 
 # -----------------------------
@@ -37,19 +38,12 @@ def _hash_password(pw: str) -> str:
 # -----------------------------
 @bp.route("/register", methods=["GET", "POST"])
 def register():
-    """
-    Dev registration:
-    - Validates presence + role.
-    - Checks duplicate email in DB via PostgREST.
-    - Stores hashed password in users.password_hash.
-    """
     if request.method == "POST":
         name = _f("name")
-        email = _f("email").lower()
+        email = (_f("email") or "").lower().strip()
         role = _f("role")
         password = _f("password")
 
-        # Minimal validation
         if not all([name, email, role, password]):
             flash("Please fill all fields.", "warning")
             return render_template("register.html")
@@ -58,7 +52,11 @@ def register():
             flash("Invalid role selected.", "warning")
             return render_template("register.html")
 
-        # Duplicate email check (DB)
+        # Optional: minimal email format check
+        if "@" not in email or "." not in email.split("@")[-1]:
+            flash("Please enter a valid email address.", "warning")
+            return render_template("register.html")
+
         try:
             existing = api.get_user_by_email(email)
         except Exception as e:
@@ -69,21 +67,26 @@ def register():
             flash("Email already registered.", "danger")
             return render_template("register.html")
 
-        # Create user in DB
         try:
-            user = api.create_user({
-                "name": name,
-                "email": email,
-                "role": role,
-                "password_hash": _hash_password(password),
-            })
+            created = api.create_user(
+                {
+                    "name": name,
+                    "email": email,
+                    "role": role,
+                    "password_hash": _hash_password(password),
+                }
+            )
         except Exception as e:
+            # This is where your original error bubbles up; now it’ll include status/text
             flash(f"Failed to create account: {e}", "danger")
             return render_template("register.html")
 
-        if not user or "id" not in user:
-            flash("Account creation did not return a user.", "danger")
-            return render_template("register.html")
+        # Handle both shapes
+        new_id = (created or {}).get("id") if isinstance(created, dict) else None
+        if not new_id:
+            # If you used Option A, this shouldn't happen. If Option B, it's okay.
+            flash("Registration successful. Please log in.", "success")
+            return redirect(url_for("auth.login"))
 
         flash("Registration successful. Please log in.", "success")
         return redirect(url_for("auth.login"))
@@ -97,12 +100,12 @@ def login():
     """
     Dev login:
     - Fetch user by email from DB via PostgREST.
-    - Compare SHA-256(password) with users.password_hash.
+    - Verify plaintext password with werkzeug.check_password_hash.
     - Sets session with basic identity (no JWT yet).
     """
     if request.method == "POST":
-        email = _f("email").lower()
-        password = _f("password")
+        email = (_f("email") or "").strip().lower()
+        password = _f("password") or ""
 
         try:
             user = api.get_user_by_email(email)
@@ -114,24 +117,23 @@ def login():
             flash("Invalid credentials.", "danger")
             return render_template("login.html")
 
-        expected = user.get("password_hash") or ""
-        if _hash_password(password) != expected:
+        stored = user.get("password_hash") or ""
+        if not check_password_hash(stored, password):
             flash("Invalid credentials.", "danger")
             return render_template("login.html")
 
-        # Set session keys used across the app
+        # Clear old session and set new identity
+        session.clear()
         session["user_id"] = user["id"]
         session["user_name"] = user["name"]
         session["user_email"] = user["email"]
         session["role"] = user["role"]
-        session["jwt"] = None  # TODO: when /rpc/login is added, store token here
+        session["jwt"] = None  # TODO: replace with real token later
 
         flash(f"Welcome back, {user['name']}!", "success")
         return redirect(url_for("jobs.list_jobs"))
 
-    # GET
     return render_template("login.html")
-
 
 @bp.route("/logout")
 def logout():
