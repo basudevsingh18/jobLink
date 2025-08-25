@@ -7,7 +7,9 @@
 {% block content %}
 <div class="register">
   <h1>Create an Account</h1>
-  <form method="post" class="register-form">
+  <form method="post" class="register-form" id="registerForm">
+    {{ csrf_field() | safe if csrf_field is defined }}
+
     <label>
       Name *
       <input type="text" name="name" required>
@@ -19,11 +21,6 @@
     </label>
 
     <label>
-      Password *
-      <input type="password" name="password" required minlength="8">
-    </label>
-
-    <label>
       Role *
       <select name="role" required>
         <option value="customer">Customer</option>
@@ -31,17 +28,161 @@
       </select>
     </label>
 
-<label class="terms">
-  <input type="checkbox" name="accept_terms" required> I accept the <a href="{{ url_for('pages.terms') }}">Terms of Service</a>
-</label>
+    <label class="pw-field">
+      Password *
+      <input type="password" name="password" id="password" required minlength="8" placeholder="••••••••">
+    </label>
+
+    <!-- Floating strength flyout (sits to the side of password input) -->
+    <div id="pw-flyout" class="pw-flyout" role="status" aria-live="polite" aria-hidden="true">
+      <div class="pw-flyout-content">
+        <div class="pw-title">Password tips</div>
+        <div class="pw-hint">Use at least 8 characters with letters, numbers, and symbols.</div>
+
+        <div class="pw-meter" aria-hidden="true">
+          <div class="pw-bar" id="pw-bar"></div>
+        </div>
+        <div class="pw-strength" id="pw-strength">Strength: —</div>
+      </div>
+    </div>
 
 
-    {# Optional: place for CAPTCHA widget if you enable later #}
-    {# <div class="captcha">CAPTCHA HERE</div> #}
+    <label>
+      Confirm Password *
+      <input type="password" name="password_confirm" id="password_confirm" required placeholder="Repeat password">
+      <small id="match-hint" class="helper"></small>
+    </label>
+
+    <label class="terms">
+      <input type="checkbox" name="accept_terms" required> I accept the
+      <a href="{{ url_for('pages.terms') }}">Terms of Service</a>
+    </label>
 
     <div class="form-actions">
-      <button type="submit" class="submit">Register</button>
+      <button type="submit" class="submit" id="registerSubmit" disabled>Register</button>
     </div>
   </form>
 </div>
+
+
+<script>
+  (function () {
+    const input = document.getElementById('password');
+    const flyout = document.getElementById('pw-flyout');
+    const bar = document.getElementById('pw-bar');
+    const strengthText = document.getElementById('pw-strength');
+
+    function scorePassword(p) {
+      if (!p) return 0;
+      let score = 0;
+      if (p.length >= 8) score += 1;
+      if (p.length >= 12) score += 1;
+      const sets = [
+        /[a-z]/.test(p),
+        /[A-Z]/.test(p),
+        /\d/.test(p),
+        /[^a-zA-Z0-9]/.test(p)
+      ].filter(Boolean).length;
+      score += Math.max(0, sets - 1); // +0..+3
+      if (/^(?:password|123456|qwerty|letmein)$/i.test(p)) score = 1;
+      return Math.min(score, 5);
+    }
+    const pct = s => [10, 25, 45, 70, 90, 100][s] + '%';
+    const col = s => ['#cc3344', '#dd6644', '#e6a23c', '#3fa45b', '#2f8f46', '#2f8f46'][s];
+    const label = s => ['Very weak', 'Weak', 'Fair', 'Good', 'Strong', 'Strong'][s];
+
+    function positionFlyout() {
+      // Place flyout vertically aligned with the password input
+      // Works best on desktop; mobile falls back via CSS
+      const rect = input.getBoundingClientRect();
+      const scrollY = window.scrollY || document.documentElement.scrollTop;
+      flyout.style.top = (rect.top + scrollY) + 'px';
+      // Lock to the right side of the input’s container
+      // If your layout differs, you can remove this line and rely on CSS left:100%
+    }
+
+    function showFlyout(show) {
+      if (show) {
+        flyout.classList.add('show');
+        flyout.setAttribute('aria-hidden', 'false');
+        positionFlyout();
+      } else {
+        flyout.classList.remove('show');
+        flyout.setAttribute('aria-hidden', 'true');
+      }
+    }
+
+    function update() {
+      const v = input.value;
+      const s = scorePassword(v);
+      bar.style.width = pct(s);
+      bar.style.background = col(s);
+      strengthText.textContent = 'Strength: ' + label(s);
+
+      if (v && !flyout.classList.contains('show')) showFlyout(true);
+      if (!v) showFlyout(false);
+    }
+
+    input.addEventListener('focus', update);
+    input.addEventListener('input', update);
+    input.addEventListener('blur', () => {
+      // Hide if field is empty; otherwise keep visible for a short time
+      if (!input.value) showFlyout(false);
+    });
+
+    window.addEventListener('resize', () => {
+      if (flyout.classList.contains('show')) positionFlyout();
+    });
+  })();
+
+
+</script>
+<script>
+(function () {
+  const form = document.getElementById('registerForm') || document.querySelector('form.register-form') || document.querySelector('form.login-form');
+  const pw   = document.getElementById('password');
+  const pc   = document.getElementById('password_confirm');
+  const hint = document.getElementById('match-hint');
+  const submitBtn = document.getElementById('registerSubmit') || document.getElementById('resetSubmit');
+
+  if (!(form && pw && pc)) return; // quietly exit if not on this page
+
+  function validateMatch() {
+    const hasBoth = pw.value.length > 0 && pc.value.length > 0;
+    const matches = pw.value === pc.value;
+
+    if (hasBoth && !matches) {
+      pc.setCustomValidity('Passwords do not match');
+      if (hint) {
+        hint.textContent = 'Passwords do not match';
+        hint.style.color = '#cc3344';
+      }
+    } else {
+      pc.setCustomValidity(''); // clear error
+      if (hint) {
+        hint.textContent = hasBoth ? 'Passwords match' : '';
+        hint.style.color = '#2f8f46';
+      }
+    }
+
+    // Optional: disable submit unless they match
+    if (submitBtn) submitBtn.disabled = hasBoth ? !matches : true;
+  }
+
+  pw.addEventListener('input', validateMatch);
+  pc.addEventListener('input', validateMatch);
+
+  form.addEventListener('submit', function (e) {
+    validateMatch();
+    if (!form.checkValidity()) {
+      e.preventDefault();
+      form.reportValidity(); // triggers the browser tooltip for setCustomValidity
+    }
+  });
+
+  // initial state
+  validateMatch();
+})();
+</script>
+
 {% endblock %}

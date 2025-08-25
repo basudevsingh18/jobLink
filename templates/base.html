@@ -23,7 +23,7 @@
     <div class="nav-container">
       <a class="brand" href="{{ url_for('jobs.list_jobs') }}">JobLink</a>
       <div class="nav-links">
-        <a class="{% if request.endpoint == 'jobs.list_jobs' %}active{% endif %}" href="{{ url_for('jobs.list_jobs') }}">Jobs</a>
+        <!-- <a class="{% if request.endpoint == 'jobs.list_jobs' %}active{% endif %}" href="{{ url_for('jobs.list_jobs') }}">Jobs</a> -->
 
         {% if session.get('user_id') %}
 
@@ -56,7 +56,7 @@
         <a class="{% if request.endpoint == 'auth.login' %}active{% endif %}"
           href="{{ url_for('auth.login') }}">Login</a>
         <a class="cta-link {% if request.endpoint == 'auth.register' %}active{% endif %}"
-          href="{{ url_for('auth.register') }}">Register</a>
+          href="{{ url_for('auth.register') }}">Become a Seeker</a>
         {% endif %}
         <span class="nav-underline"></span>
       </div>

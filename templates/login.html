@@ -2,30 +2,6 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
-<style>
-  /* Keep resend form consistent with form-actions look */
-  .resend-verification {
-    margin-top: 1.5rem;
-    text-align: center;
-  }
-
-  .resend-verification p {
-    margin-bottom: .5rem;
-    color: var(--text-muted, #666); /* optional: muted style */
-    font-size: 0.9rem;
-  }
-
-  .resend-verification form {
-    display: flex;
-    justify-content: center;
-    gap: 0.5rem;
-  }
-
-  .resend-verification input[type="email"] {
-    flex: 1;
-    max-width: 250px;
-  }
-</style>
 {% endblock %}
 
 {% block content %}
@@ -34,13 +10,13 @@
 
   {# Flash messages #}
   {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-      <ul class="flashes">
-        {% for category, message in messages %}
-          <li class="flash {{ category }}">{{ message }}</li>
-        {% endfor %}
-      </ul>
-    {% endif %}
+  {% if messages %}
+  <ul class="flashes">
+    {% for category, message in messages %}
+    <li class="flash {{ category }}">{{ message }}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
   {% endwith %}
 
   <form method="post" class="login-form">
@@ -64,14 +40,14 @@
       <a class="btn ghost" href="{{ url_for('auth.register') }}">Create account</a>
       <button type="submit" class="btn primary submit">Sign in</button>
     </div>
-</div>
+    </div>
 
-  <!-- <div class="resend-verification">
+    <div class="resend-verification">
     <p>Didn't get a verification email?</p>
     <form method="post" action="{{ url_for('auth.resend_verification') }}">
       <input type="email" name="email" placeholder="Enter your email" required>
       <button type="submit" class="btn ghost">Resend link</button>
     </form>
-  </div> -->
+  </div>
 </section>
 {% endblock %}

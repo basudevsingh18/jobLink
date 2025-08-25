@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Verify your JobLink account</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #f6f8fa;
+      margin: 0;
+      padding: 20px;
+      color: #333;
+    }
+    .container {
+      max-width: 520px;
+      margin: 0 auto;
+      background: #fff;
+      border: 1px solid #e6eaee;
+      border-radius: 12px;
+      box-shadow: 0 6px 18px rgba(0,0,0,.06);
+      padding: 24px;
+    }
+    h1 {
+      font-size: 1.4rem;
+      margin-top: 0;
+      margin-bottom: 1rem;
+      color: #2f5aa8;
+    }
+    p {
+      line-height: 1.5;
+      margin: 0 0 1rem;
+    }
+    .btn {
+      display: inline-block;
+      background: #2f5aa8;
+      color: #fff !important;
+      padding: 12px 20px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      transition: background .2s;
+    }
+    .btn:hover {
+      background: #244781;
+    }
+    .footer {
+      margin-top: 2rem;
+      font-size: .85rem;
+      color: #777;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Verify your JobLink account</h1>
+    <p>Hello {{ name }},</p>
+    <p>Thanks for creating an account with <strong>JobLink</strong>. Please confirm your email address to activate your account.</p>
+    <p style="text-align:center;">
+      <a href="{{ verify_url }}" class="btn" target="_blank">Verify my account</a>
+    </p>
+    <p>If the button doesn’t work, copy and paste this link into your browser:</p>
+    <p><a href="{{ verify_url }}">{{ verify_url }}</a></p>
+    <div class="footer">
+      <p>If you didn’t request this account, you can ignore this email.</p>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,5 +1,9 @@
 # microjobs/api.py
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 import os
+import smtplib
+from flask import current_app
 import requests
 
 # PGRST_URL = os.getenv("PGRST_URL", "http://localhost:3000")
@@ -43,93 +47,30 @@ def create_user(payload: dict):
         raise RuntimeError("Create succeeded but response body was not a row.")
 
 # ---------- JOBS ----------
-# def list_jobs_api(
-#     *,
-#     q: str | None = None,
-#     status: str | None = None,
-#     page: int = 1,
-#     page_size: int = 20,
-#     token: str | None = None,
-#     select: str = "*"  # <-- no hard-coded non-existent columns
-# ):
-#     """
-#     Fetch paginated jobs with optional search and status filter.
-#     Returns (rows, total_count or None)
-#     """
-#     assert page >= 1 and page_size > 0
-#     offset = (page - 1) * page_size
+def create_user_event(data: dict):
+    """
+    Insert an event into user_events via PostgREST.
+    Expected keys:
+      - user_id (int)
+      - event_type (str)
+      - event_detail (dict|str, optional)
+      - ip_address (str, optional)
+      - user_agent (str, optional)
+    """
+    import json
+    url = f"{BASE}/user_events"
 
-#     params = {
-#         "select": select,
-#         "order": "created_at.desc",
-#         "limit": str(page_size),
-#         "offset": str(offset),
-#     }
-#     if status:
-#         params["status"] = f"eq.{status}"
+    resp = requests.post(url, headers=HEADERS, data=json.dumps(data))
+    if resp.status_code not in (200, 201):
+        raise RuntimeError(f"User event insert failed: {resp.status_code} {resp.text}")
+    return resp.json()
 
-#     if q:
-#         # Match title or description if they exist; harmless if one is missing
-#         params["or"] = f"(title.ilike.*{q}*,description.ilike.*{q}*)"
-
-#     # Prefer exact count in Content-Range
-#     headers = _headers(token, extra={"Prefer": "count=exact"})
-#     r = requests.get(f"{BASE}/jobs", params=params, headers=headers, timeout=10)
-
-#     if not r.ok:
-#         raise RuntimeError(f"{r.status_code} {r.reason} :: {r.text}")
-
-#     rows = r.json()
-
-#     total = None
-#     cr = r.headers.get("Content-Range")  # e.g., "0-19/123"
-#     if cr and "/" in cr:
-#         try:
-#             total = int(cr.split("/")[-1])
-#         except ValueError:
-#             total = None
-
-#     return rows, total
-
-
-# def list_jobs_api(
-#     *,
-#     q: str | None = None,
-#     status: str | None = None,
-#     page: int = 1,
-#     page_size: int = 20,
-#     token: str | None = None,
-#     select: str = "*",
-#     order: str = "created_at.desc"
-# ):
-#     assert page >= 1 and page_size > 0
-#     offset = (page - 1) * page_size
-#     params = {
-#         "select": select,
-#         "order": order,
-#         "limit": str(page_size),
-#         "offset": str(offset),
-#     }
-#     if status:
-#         params["status"] = f"eq.{status}"
-#     if q:
-#         params["or"] = f"(title.ilike.*{q}*,description.ilike.*{q}*)"
-
-#     headers = _headers(token, extra={"Prefer": "count=exact"})
-#     r = requests.get(f"{BASE}/jobs", params=params, headers=headers, timeout=10)
-#     if not r.ok:
-#         raise RuntimeError(f"{r.status_code} {r.reason} :: {r.text}")
-
-#     rows = r.json()
-#     total = None
-#     cr = r.headers.get("Content-Range")
-#     if cr and "/" in cr:
-#         try:
-#             total = int(cr.split("/")[-1])
-#         except ValueError:
-#             total = None
-#     return rows, total
-
+def send_email(to: str, subject: str, html: str, plain: str | None = None):
+    print("=== MOCK EMAIL ===")
+    print("To:", to)
+    print("Subject:", subject)
+    print("HTML:", html)
+    print("=================")
 
 def list_jobs_api(
     *,
@@ -168,8 +109,6 @@ def list_jobs_api(
         try: total = int(cr.split("/")[-1])
         except ValueError: total = None
     return rows, total
-
-
 
 def get_job_api(job_id: int, *, token: str | None = None, select: str = "*"):
     r = requests.get(
@@ -220,3 +159,33 @@ def delete_job_api(job_id: int, *, token: str | None = None):
     # PostgREST returns deleted row(s) if Prefer=return=representation
     data = r.json()
     return data[0] if isinstance(data, list) and data else data
+
+# def send_email(to: str, subject: str, html: str, plain: str | None = None):
+    """
+    Send an email using SMTP.
+    Reads SMTP settings from Flask config:
+      MAIL_SERVER, MAIL_PORT, MAIL_USERNAME, MAIL_PASSWORD, MAIL_USE_TLS/SSL
+    """
+    sender = current_app.config.get("MAIL_USERNAME")
+    if not sender:
+        raise RuntimeError("MAIL_USERNAME not configured")
+
+    msg = MIMEMultipart("alternative")
+    msg["From"] = sender
+    msg["To"] = to
+    msg["Subject"] = subject
+
+    if plain:
+        msg.attach(MIMEText(plain, "plain"))
+    msg.attach(MIMEText(html, "html"))
+
+    with smtplib.SMTP(current_app.config.get("MAIL_SERVER"),
+                      current_app.config.get("MAIL_PORT")) as server:
+        if current_app.config.get("MAIL_USE_TLS"):
+            server.starttls()
+        if current_app.config.get("MAIL_USERNAME") and current_app.config.get("MAIL_PASSWORD"):
+            server.login(
+                current_app.config["MAIL_USERNAME"],
+                current_app.config["MAIL_PASSWORD"]
+            )
+        server.sendmail(sender, [to], msg.as_string())

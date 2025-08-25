@@ -65,15 +65,41 @@
 }
 
 
-  .forgot-password {
-    margin-top: .5rem;
-    text-align: right;
-  }
-  .forgot-password a {
-    font-size: 0.9rem;
-    color: #2f5aa8;
-    text-decoration: none;
-  }
-  .forgot-password a:hover {
-    text-decoration: underline;
-  }
+.forgot-password {
+  margin-top: .5rem;
+  text-align: right;
+}
+
+.forgot-password a {
+  font-size: 0.9rem;
+  color: #2f5aa8;
+  text-decoration: none;
+}
+
+.forgot-password a:hover {
+  text-decoration: underline;
+}
+
+/* Keep resend form consistent with form-actions look */
+.resend-verification {
+  margin-top: 1.5rem;
+  text-align: center;
+}
+
+.resend-verification p {
+  margin-bottom: .5rem;
+  color: var(--text-muted, #666);
+  /* optional: muted style */
+  font-size: 0.9rem;
+}
+
+.resend-verification form {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.resend-verification input[type="email"] {
+  flex: 1;
+  max-width: 250px;
+}
