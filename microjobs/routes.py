@@ -2,9 +2,13 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from urllib.parse import quote_plus
 from datetime import datetime
-from .api import list_jobs_api, get_job_api, create_job_api  # PostgREST helpers
-
+from . import api
 bp = Blueprint("jobs", __name__)
+
+JOBS = []
+ACCEPTED_JOBS = []
+NEXT_ID = 1
+NEXT_ACCEPT_ID = 1
 
 CATEGORIES = [
     "Home Repairs",
@@ -90,7 +94,7 @@ def list_jobs():
     params["order"] = "created_at.desc,id.desc"
 
     try:
-        jobs = list_jobs_api(params=params)
+        jobs = api.list_jobs_api(params=params)
     except Exception as e:
         flash(f"Could not load jobs: {e}", "danger")
         jobs = []
@@ -171,7 +175,7 @@ def post_job():
     }
 
     try:
-        created_row = create_job_api(payload)  # returns created row dict
+        created_row = api.create_job_api(payload)  # returns created row dict
         new_id = created_row["id"]
         flash("Your job was posted!", "success")
         return redirect(url_for("jobs.job_detail", job_id=new_id))
@@ -195,7 +199,7 @@ def job_detail(job_id):
         return digits
 
     try:
-        job = get_job_api(job_id)
+        job = api.get_job_api(job_id)
     except Exception as e:
         job = None
         flash(f"Error loading job: {e}", "danger")
@@ -259,7 +263,7 @@ def accept_job(job_id):
 
     job = None
     try:
-        job = get_job_api(job_id)
+        job = api.get_job_api(job_id)
     except Exception:
         pass
 
