@@ -43,6 +43,94 @@ def create_user(payload: dict):
         raise RuntimeError("Create succeeded but response body was not a row.")
 
 # ---------- JOBS ----------
+# def list_jobs_api(
+#     *,
+#     q: str | None = None,
+#     status: str | None = None,
+#     page: int = 1,
+#     page_size: int = 20,
+#     token: str | None = None,
+#     select: str = "*"  # <-- no hard-coded non-existent columns
+# ):
+#     """
+#     Fetch paginated jobs with optional search and status filter.
+#     Returns (rows, total_count or None)
+#     """
+#     assert page >= 1 and page_size > 0
+#     offset = (page - 1) * page_size
+
+#     params = {
+#         "select": select,
+#         "order": "created_at.desc",
+#         "limit": str(page_size),
+#         "offset": str(offset),
+#     }
+#     if status:
+#         params["status"] = f"eq.{status}"
+
+#     if q:
+#         # Match title or description if they exist; harmless if one is missing
+#         params["or"] = f"(title.ilike.*{q}*,description.ilike.*{q}*)"
+
+#     # Prefer exact count in Content-Range
+#     headers = _headers(token, extra={"Prefer": "count=exact"})
+#     r = requests.get(f"{BASE}/jobs", params=params, headers=headers, timeout=10)
+
+#     if not r.ok:
+#         raise RuntimeError(f"{r.status_code} {r.reason} :: {r.text}")
+
+#     rows = r.json()
+
+#     total = None
+#     cr = r.headers.get("Content-Range")  # e.g., "0-19/123"
+#     if cr and "/" in cr:
+#         try:
+#             total = int(cr.split("/")[-1])
+#         except ValueError:
+#             total = None
+
+#     return rows, total
+
+
+# def list_jobs_api(
+#     *,
+#     q: str | None = None,
+#     status: str | None = None,
+#     page: int = 1,
+#     page_size: int = 20,
+#     token: str | None = None,
+#     select: str = "*",
+#     order: str = "created_at.desc"
+# ):
+#     assert page >= 1 and page_size > 0
+#     offset = (page - 1) * page_size
+#     params = {
+#         "select": select,
+#         "order": order,
+#         "limit": str(page_size),
+#         "offset": str(offset),
+#     }
+#     if status:
+#         params["status"] = f"eq.{status}"
+#     if q:
+#         params["or"] = f"(title.ilike.*{q}*,description.ilike.*{q}*)"
+
+#     headers = _headers(token, extra={"Prefer": "count=exact"})
+#     r = requests.get(f"{BASE}/jobs", params=params, headers=headers, timeout=10)
+#     if not r.ok:
+#         raise RuntimeError(f"{r.status_code} {r.reason} :: {r.text}")
+
+#     rows = r.json()
+#     total = None
+#     cr = r.headers.get("Content-Range")
+#     if cr and "/" in cr:
+#         try:
+#             total = int(cr.split("/")[-1])
+#         except ValueError:
+#             total = None
+#     return rows, total
+
+
 def list_jobs_api(
     *,
     q: str | None = None,
@@ -50,46 +138,38 @@ def list_jobs_api(
     page: int = 1,
     page_size: int = 20,
     token: str | None = None,
-    select: str = "*"  # <-- no hard-coded non-existent columns
+    select: str = "*",
+    order: str = "created_at.desc,id.desc",
+    filters: dict[str, str] | None = None,
 ):
-    """
-    Fetch paginated jobs with optional search and status filter.
-    Returns (rows, total_count or None)
-    """
     assert page >= 1 and page_size > 0
     offset = (page - 1) * page_size
-
     params = {
         "select": select,
-        "order": "created_at.desc",
+        "order": order,
         "limit": str(page_size),
         "offset": str(offset),
     }
     if status:
         params["status"] = f"eq.{status}"
-
     if q:
-        # Match title or description if they exist; harmless if one is missing
         params["or"] = f"(title.ilike.*{q}*,description.ilike.*{q}*)"
+    if filters:
+        params.update(filters)
 
-    # Prefer exact count in Content-Range
     headers = _headers(token, extra={"Prefer": "count=exact"})
     r = requests.get(f"{BASE}/jobs", params=params, headers=headers, timeout=10)
-
     if not r.ok:
         raise RuntimeError(f"{r.status_code} {r.reason} :: {r.text}")
-
     rows = r.json()
-
     total = None
-    cr = r.headers.get("Content-Range")  # e.g., "0-19/123"
+    cr = r.headers.get("Content-Range")
     if cr and "/" in cr:
-        try:
-            total = int(cr.split("/")[-1])
-        except ValueError:
-            total = None
-
+        try: total = int(cr.split("/")[-1])
+        except ValueError: total = None
     return rows, total
+
+
 
 def get_job_api(job_id: int, *, token: str | None = None, select: str = "*"):
     r = requests.get(

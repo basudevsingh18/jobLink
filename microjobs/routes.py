@@ -20,8 +20,11 @@ from urllib.parse import quote_plus
 from datetime import datetime
 from typing import Optional
 from . import api
+from werkzeug.security import generate_password_hash, check_password_hash
+
 
 bp = Blueprint("jobs", __name__)
+
 
 # --------------------------------------------------------------------------------------
 # Back-compat placeholders (legacy tests may clear these). They are not used by routes.
@@ -100,6 +103,8 @@ def require_role(role: str) -> bool:
         return False
     return True
 
+def require_auth():
+    return bool(session.get("user_id"))
 
 # --------------------------------------------------------------------------------------
 # Routes
@@ -271,43 +276,36 @@ def accept_job(job_id: int):
 
 @bp.route("/my-jobs")
 def my_jobs():
-    """
-    Placeholder until JWT/RLS:
-    - Without server-issued claims, we can’t reliably filter by customer_id.
-    - Show a friendly note and list all jobs as a fallback.
-    """
     if not require_role("customer"):
         return redirect(url_for("auth.login"))
 
-    flash("My Jobs requires account-linked posting. Coming soon with API auth.", "info")
+    uid = session.get("user_id")
+    if not uid:
+        return redirect(url_for("auth.login"))
+
     try:
-        jobs = api.list_jobs_api(params={
-            "select": "id,title,description,category,location,budget,contact,created_at",
-            "order": "created_at.desc,id.desc"
-        })
-    except Exception:
-        jobs = []
+        rows, total = api.list_jobs_api(
+            select="id,title,description,category,location,budget,contact,created_at,customer_id",
+            order="created_at.desc,id.desc",
+            page=int(request.args.get("page", 1)),
+            page_size=20,
+            token=session.get("jwt"),
+            filters={"customer_id": f"eq.{uid}"}  # <-- key line
+        )
+        jobs = rows
+    except Exception as e:
+        flash(f"Could not load jobs: {e}", "danger")
+        jobs, total = [], 0
 
     return render_template(
         "jobs.html",
         jobs=jobs,
         categories=CATEGORIES,
         locations=LOCATIONS,
-        q="", cat="", loc=""
+        q="", cat="", loc="",
+        total=total or len(jobs),
+        page=int(request.args.get("page", 1)),
     )
-
-@bp.route("/admin")
-def admin():
-    """Simple admin list for now (no restriction yet)."""
-    try:
-        jobs = api.list_jobs_api(params={
-            "select": "id,title,description,category,location,budget,contact,created_at",
-            "order": "created_at.desc,id.desc"
-        })
-    except Exception as e:
-        flash(f"Could not load admin list: {e}", "danger")
-        jobs = []
-    return render_template("admin.html", jobs=jobs)
 
 @bp.route("/seed")
 def seed():
@@ -317,3 +315,6 @@ def seed():
     """
     flash("Seeding is handled by the database on first startup.", "info")
     return redirect(url_for("jobs.list_jobs"))
+
+
+

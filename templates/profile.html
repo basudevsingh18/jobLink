@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="profile">
+  <header class="profile-head">
+    <div>
+      <h1>Hi, {{ user.name }}</h1>
+      <p class="muted">{{ user.email }}</p>
+    </div>
+    <nav class="tabs">
+      <a class="tab {% if tab=='overview' %}active{% endif %}" href="{{ url_for('account.me', tab='overview') }}">Overview</a>
+      <a class="tab {% if tab=='jobs' %}active{% endif %}" href="{{ url_for('account.me', tab='jobs') }}">My Jobs</a>
+      <a class="tab {% if tab=='settings' %}active{% endif %}" href="{{ url_for('account.me', tab='settings') }}">Settings</a>
+    </nav>
+  </header>
+
+  {% if tab in ('overview','jobs') %}
+  <section class="card">
+    <div class="card-head">
+      <h2>My Jobs</h2>
+      <a class="btn primary" href="{{ url_for('jobs.post_job') }}">Post a Job</a>
+    </div>
+    {% if jobs %}
+      <table class="table">
+        <thead>
+          <tr><th>Title</th><th>Category</th><th>Location</th><th>Budget</th><th>Status</th><th>Created</th></tr>
+        </thead>
+        <tbody>
+          {% for j in jobs %}
+            <tr>
+              <td><a href="{{ url_for('jobs.job_detail', job_id=j.id) }}">{{ j.title }}</a></td>
+              <td>{{ j.category }}</td>
+              <td>{{ j.location }}</td>
+              <td>{% if j.budget is not none %}GYD {{ j.budget }}{% endif %}</td>
+              <td>{{ j.status or 'open' }}</td>
+              <td>{{ (j.created_at|string)[:16] }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <div class="pager">
+        {% set prev = page-1 %}{% set next = page+1 %}
+        {% if page > 1 %}<a class="seed-link" href="{{ url_for('account.me', tab=tab, page=prev) }}">← Prev</a>{% endif %}
+        {% if total and (page*20) < total %}<a class="seed-link" href="{{ url_for('account.me', tab=tab, page=next) }}">Next →</a>{% endif %}
+        <span class="muted">Page {{ page }}{% if total %} · {{ total }} total{% endif %}</span>
+      </div>
+    {% else %}
+      <p class="muted">You haven’t posted any jobs yet.</p>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  {% if tab == 'settings' %}
+  <section class="grid-2">
+    <form class="card" method="post" action="{{ url_for('account.update_profile') }}">
+      <h2>Profile</h2>
+      <label>
+        <span>Name</span>
+        <input class="input" type="text" name="name" value="{{ user.name or '' }}" required>
+      </label>
+      <label>
+        <span>Contact</span>
+        <input class="input" type="text" name="contact" value="{{ user.contact or '' }}">
+      </label>
+      <label>
+        <span>Location</span>
+        <input class="input" type="text" name="location" value="{{ user.location or '' }}">
+      </label>
+      <div class="actions">
+        <button class="btn primary" type="submit">Save changes</button>
+      </div>
+    </form>
+
+    <form class="card" method="post" action="{{ url_for('account.change_password') }}">
+      <h2>Password</h2>
+      <label><span>New password</span><input class="input" type="password" name="password" minlength="8" required></label>
+      <label><span>Confirm password</span><input class="input" type="password" name="password2" minlength="8" required></label>
+      <div class="actions">
+        <button class="btn" type="submit">Change password</button>
+      </div>
+    </form>
+  </section>
+  {% endif %}
+</section>
+{% endblock %}
