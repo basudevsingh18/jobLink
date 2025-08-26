@@ -10,21 +10,65 @@
       <h1>Hi, {{ user.name }}</h1>
       <p class="muted">{{ user.email }}</p>
     </div>
-    <nav class="tabs">
-      <a class="tab {% if tab=='overview' %}active{% endif %}" href="{{ url_for('account.me', tab='overview') }}">Overview</a>
-      <a class="tab {% if tab=='jobs' %}active{% endif %}" href="{{ url_for('account.me', tab='jobs') }}">My Jobs</a>
-      <a class="tab {% if tab=='settings' %}active{% endif %}" href="{{ url_for('account.me', tab='settings') }}">Settings</a>
-    </nav>
+<nav class="tabs">
+  {% if session.get('role','').lower() == 'worker' %}
+    <a class="tab {{ 'active' if tab=='accepted' else '' }}"
+       href="{{ url_for('account.me', tab='accepted') }}">
+       Accepted Jobs
+    </a>
+  {% endif %}
+  <a class="tab {{ 'active' if tab=='jobs' else '' }}"
+     href="{{ url_for('account.me', tab='jobs') }}">
+     My Jobs
+  </a>
+  <a class="tab {{ 'active' if tab=='settings' else '' }}"
+     href="{{ url_for('account.me', tab='settings') }}">
+     Settings
+  </a>
+</nav>
+
   </header>
 
-  {% if tab in ('overview','jobs') %}
-  <section class="card">
-    <div class="card-head">
-      <h2>My Jobs</h2>
-      {% if session.get('role') == 'customer' %}
+
+
+
+{% if tab in ('accepted','jobs') %}
+<section class="card">
+  <div class="card-head">
+    <h2>{{ heading }}</h2>
+    {% if tab == 'jobs' and session.get('role') == 'customer' %}
       <a class="btn primary" href="{{ url_for('jobs.post_job') }}">Post a Job</a>
-      {% endif %}
-    </div>
+    {% endif %}
+  </div>
+
+  {% if tab == 'accepted' %}
+    {% if jobs %}
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Title</th><th>Category</th><th>Location</th>
+            <th>Budget</th><th>Status</th><th>Accepted</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in jobs %}
+            {# row = accepted_jobs record; row.job is the embedded job #}
+            <tr>
+              <td><a href="{{ url_for('jobs.job_detail', job_id=row.job.id) }}">{{ row.job.title }}</a></td>
+              <td>{{ row.job.category or '—' }}</td>
+              <td>{{ row.job.location or '—' }}</td>
+              <td>{% if row.job.budget is not none %}GYD {{ row.job.budget }}{% else %}—{% endif %}</td>
+              <td>{{ row.job.status or 'assigned' }}</td>
+              <td>{{ (row.accepted_at|string)[:16] }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="muted">You haven’t accepted any jobs yet.</p>
+    {% endif %}
+  {% else %}
+    {# tab == 'jobs' (your original table for posted/owned jobs) #}
     {% if jobs %}
       <table class="table">
         <thead>
@@ -43,17 +87,29 @@
           {% endfor %}
         </tbody>
       </table>
-      <div class="pager">
-        {% set prev = page-1 %}{% set next = page+1 %}
-        {% if page > 1 %}<a class="seed-link" href="{{ url_for('account.me', tab=tab, page=prev) }}">← Prev</a>{% endif %}
-        {% if total and (page*20) < total %}<a class="seed-link" href="{{ url_for('account.me', tab=tab, page=next) }}">Next →</a>{% endif %}
-        <span class="muted">Page {{ page }}{% if total %} · {{ total }} total{% endif %}</span>
-      </div>
     {% else %}
       <p class="muted">You haven’t posted any jobs yet.</p>
     {% endif %}
-  </section>
   {% endif %}
+
+  {# Pager (works for both tabs) #}
+  {% if total and total > 0 %}
+  <div class="pager">
+    {% set prev = page-1 %}{% set next = page+1 %}
+    {% if page > 1 %}
+      <a class="seed-link" href="{{ url_for('account.me', tab=tab, page=prev) }}">← Prev</a>
+    {% endif %}
+    {% if (page*20) < total %}
+      <a class="seed-link" href="{{ url_for('account.me', tab=tab, page=next) }}">Next →</a>
+    {% endif %}
+    <span class="muted">Page {{ page }}{% if total %} · {{ total }} total{% endif %}</span>
+  </div>
+  {% endif %}
+</section>
+{% endif %}
+
+
+
 
   {% if tab == 'settings' %}
   <section class="grid-2">

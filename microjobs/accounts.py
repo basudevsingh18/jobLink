@@ -14,37 +14,63 @@ bp = Blueprint("account", __name__)
 
 @bp.route("/me")
 def me():
-    if not require_auth():
-        return redirect(url_for("auth.login"))
+    role = (session.get("role") or "").lower()
+    uid  = session.get("user_id") or session.get("uid")
+    if not uid:
+        return redirect(url_for("auth.login", next=request.full_path))
 
-    tab = request.args.get("tab", "overview")
-    uid = session["user_id"]
+    # Default tab: workers land on 'accepted', others on 'jobs'
+    requested = (request.args.get("tab") or "").strip().lower()
+    tab = requested or ("accepted" if role == "worker" else "jobs")
 
-    # Basic user info (from session; fetch fresh if you prefer)
-    user = {
-        "id": uid,
-        "name": session.get("user_name"),
-        "email": session.get("user_email"),
-        "role": session.get("role"),
-    }
+    page = int(request.args.get("page", 1))
 
-    jobs, total = [], 0
-    if tab in ("overview", "jobs"):
-        try:
-            jobs, total = api.list_jobs_api(
-                select="id,title,category,location,budget,status,created_at,customer_id",
+    jobs = []
+    total = 0
+    heading = "My Jobs"
+
+    try:
+        if tab == "accepted":
+            if role != "worker":
+                # Non-workers aren’t allowed to see this tab
+                return redirect(url_for("account.me", tab="jobs"))
+            heading = "Accepted Jobs"
+            rows, total = api.list_accepted_jobs(worker_id=uid, page=page, page_size=20)
+            # rows are accepted_jobs with embedded job
+            jobs = rows
+        elif tab == "jobs":
+            heading = "My Jobs"
+            # Your existing logic for owned/posted jobs (adjust as you already had)
+            rows, total = api.list_jobs_api(
+                page=page, page_size=20,
+                filters={"customer_id": f"eq.{uid}"},
                 order="created_at.desc,id.desc",
-                page=int(request.args.get("page", 1)),
-                page_size=20,
-                filters={"customer_id": f"eq.{uid}"}
+                select="id,title,category,location,budget,status,created_at"
             )
-        except Exception as e:
-            flash(f"Could not load your jobs: {e}", "danger")
+            jobs = rows
+        elif tab == "settings":
+            heading = "Settings"
+        else:
+            # Fallback
+            return redirect(url_for("account.me", tab="jobs"))
+    except Exception as e:
+        flash(f"Could not load data: {e}", "danger")
 
-    return render_template("profile.html",
-                           user=user, tab=tab,
-                           jobs=jobs, total=total or len(jobs),
-                           page=int(request.args.get("page", 1)))
+    return render_template(
+        "profile.html",
+        tab=tab,
+        heading=heading,
+        jobs=jobs,
+        total=total or (len(jobs) if jobs else 0),
+        page=page,
+        role=role,
+        user={
+            "id": uid,
+            "name": session.get("user_name"),
+            "email": session.get("user_email"),
+            "role": role,
+        }
+    )
 
 @bp.post("/me/profile")
 def update_profile():

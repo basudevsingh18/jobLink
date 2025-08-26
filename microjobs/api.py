@@ -260,6 +260,41 @@ def create_accepted_job(job_id: int, worker_id: int, *, token: str | None = None
     data = r.json()
     return data[0] if isinstance(data, list) and data else data
 
+def list_accepted_jobs(
+    worker_id: int,
+    *,
+    page: int = 1,
+    page_size: int = 20,
+    order: str = "accepted_at.desc",
+    token: str | None = None,
+):
+    """Return accepted_jobs joined with jobs for a given worker."""
+    assert page >= 1 and page_size > 0
+    offset = (page - 1) * page_size
+
+    params = {
+        "worker_id": f"eq.{worker_id}",
+        "select": "id,accepted_at,job:jobs(id,title,category,location,budget,status,created_at)",
+        "order": order,
+        "limit": str(page_size),
+        "offset": str(offset),
+    }
+
+    headers = _headers(token, extra={"Prefer": "count=exact"})
+    r = requests.get(f"{BASE}/accepted_jobs", params=params, headers=headers, timeout=10)
+    if not r.ok:
+        raise RuntimeError(f"{r.status_code} {r.reason} :: {r.text}")
+
+    rows = r.json()
+    total = None
+    cr = r.headers.get("Content-Range")
+    if cr and "/" in cr:
+        try:
+            total = int(cr.split("/")[-1])
+        except ValueError:
+            total = None
+    return rows, total
+
 # -----------------------------
 # Email (SMTP)
 # -----------------------------
