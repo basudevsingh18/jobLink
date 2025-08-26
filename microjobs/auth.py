@@ -54,9 +54,10 @@ def register():
     name = _f("name")
     email = _f("email").lower()
     password = _f("password")
+    role = _f("role")
 
-    if not all([name, email, password]):
-        flash("Please fill in name, email, and password.", "warning")
+    if not all([name, email, password, role]):
+        flash("Please fill in name, email, password, and role.", "warning")
         return render_template("register.html")
 
     # Check duplicate email
@@ -69,7 +70,7 @@ def register():
         "name": name,
         "email": email,
         "password_hash": generate_password_hash(password),  # pbkdf2:sha256
-        "role": "customer",
+        "role": role,
         "status": "active",
     })
 

@@ -223,6 +223,43 @@ def delete_job_api(job_id: int, *, token: str | None = None):
     data = r.json()
     return data[0] if isinstance(data, list) and data else data
 
+# --- Accepted jobs helpers ---
+
+def create_accepted_job(job_id: int, worker_id: int, *, token: str | None = None):
+    """
+    Insert into accepted_jobs. If the (job_id, worker_id) already exists (409),
+    we fetch and return the existing row. Returns a row dict or None.
+    """
+    url = f"{BASE}/accepted_jobs"
+
+    # Use your existing HEADERS behavior (Prefer: return=representation)
+    headers = _headers(token, extra=HEADERS)
+    payload = {"job_id": job_id, "worker_id": worker_id}
+
+    r = requests.post(url, json=payload, headers=headers, timeout=10)
+    if r.status_code == 409:
+        # Unique constraint hit → row already exists; fetch it
+        g = requests.get(
+            url,
+            params={
+                "job_id": f"eq.{job_id}",
+                "worker_id": f"eq.{worker_id}",
+                "limit": "1",
+            },
+            headers=_headers(token),
+            timeout=10,
+        )
+        if g.ok:
+            rows = g.json()
+            return rows[0] if rows else None
+        return None
+
+    if not r.ok:
+        raise RuntimeError(f"{r.status_code} {r.reason} :: {r.text}")
+
+    data = r.json()
+    return data[0] if isinstance(data, list) and data else data
+
 # -----------------------------
 # Email (SMTP)
 # -----------------------------

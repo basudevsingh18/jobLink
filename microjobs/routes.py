@@ -104,6 +104,12 @@ def require_role(role: str) -> bool:
 def require_auth():
     return bool(session.get("user_id"))
 
+def _current_user_id():
+    return session.get("user_id") or session.get("uid")
+
+def _is_worker():
+    return (session.get("role") or "").lower() == "worker"
+
 # --------------------------------------------------------------------------------------
 # Routes
 # --------------------------------------------------------------------------------------
@@ -267,30 +273,51 @@ def job_detail(job_id: int):
         related_jobs=related,
     )
 
-@bp.route("/job/<int:job_id>/accept")
+@bp.post("/job/<int:job_id>/accept")
 def accept_job(job_id: int):
-    """
-    Worker-only accept flow.
-    For now: just open WhatsApp; DB logging will come with accepted_jobs + JWT.
-    """
-    if not require_role("worker"):
-        return redirect(url_for("auth.login"))
+    uid = _current_user_id()
+    if not uid:
+        flash("Please log in to accept this job.", "warning")
+        return redirect(url_for("auth.login", next=request.path))
+    if not _is_worker():
+        flash("Only workers can accept jobs.", "warning")
+        return redirect(url_for("jobs.job_detail", job_id=job_id))
 
-    job = None
+    # Load the job (for message + validation)
     try:
         job = api.get_job_api(job_id)
     except Exception:
-        pass
-
+        job = None
     if not job:
         flash("Job not found.", "danger")
         return redirect(url_for("jobs.list_jobs"))
 
+    # Insert into accepted_jobs (idempotent thanks to UNIQUE(job_id, worker_id))
+    try:
+        api.create_accepted_job(job_id=job_id, worker_id=uid)
+    except Exception as e:
+        flash(f"Could not record acceptance: {e}", "danger")
+        return redirect(url_for("jobs.job_detail", job_id=job_id))
+
+    # OPTIONAL: if your jobs table has these columns, also mark assigned:
+    # try:
+    #     api.update_job_api(job_id, {
+    #         "status": "assigned",
+    #         "worker_id": uid,
+    #         "assigned_at": datetime.now(timezone.utc).isoformat()
+    #     })
+    # except Exception:
+    #     pass  # not critical for messaging
+
+    # Build WA link
+    phone = normalize_phone(job.get("contact") or "")
+    title = job.get("title", "")
     whatsapp = wa_link(
-        normalize_phone(job.get("contact", "")) or "",
-        f"Hi, I saw your task '{job.get('title','')}' on JobLink. I'm interested. Is it still available?",
+        phone,
+        f"Hi, I saw your task “{title}” (Job #{job_id}) on JobLink. I’m interested—can we chat details?"
     )
-    flash("Opening WhatsApp…", "info")
+
+    flash("You’ve accepted this job. Opening WhatsApp…", "success")
     return redirect(whatsapp)
 
 @bp.route("/my-jobs")

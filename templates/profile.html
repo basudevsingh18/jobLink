@@ -21,7 +21,9 @@
   <section class="card">
     <div class="card-head">
       <h2>My Jobs</h2>
+      {% if session.get('role') == 'customer' %}
       <a class="btn primary" href="{{ url_for('jobs.post_job') }}">Post a Job</a>
+      {% endif %}
     </div>
     {% if jobs %}
       <table class="table">

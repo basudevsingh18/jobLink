@@ -7,7 +7,8 @@
 {% block content %}
 <nav class="crumbs">
   <a href="{{ url_for('jobs.list_jobs') }}">Jobs</a>
-  {% if job.category %}<span>/</span><a href="{{ url_for('jobs.list_jobs', category=job.category) }}">{{ job.category }}</a>{% endif %}
+  {% if job.category %}<span>/</span><a href="{{ url_for('jobs.list_jobs', category=job.category) }}">{{ job.category
+    }}</a>{% endif %}
   <span>/</span><span class="crumb-current">{{ job.title }}</span>
 </nav>
 
@@ -25,11 +26,17 @@
 
         <div class="meta-row">
           <span class="meta">
-            <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7m0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="currentColor"
+                d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7m0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z" />
+            </svg>
             {{ job.location or 'Remote' }}
           </span>
           <span class="meta">
-            <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v13a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2m0 15H5V10h14z"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="currentColor"
+                d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v13a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2m0 15H5V10h14z" />
+            </svg>
             Posted {{ created_at_display }}
           </span>
         </div>
@@ -52,7 +59,7 @@
         <h3>Skills / Tags</h3>
         <ul class="tags">
           {% for t in job.tags %}
-            <li class="chip chip--ghost">{{ t }}</li>
+          <li class="chip chip--ghost">{{ t }}</li>
           {% endfor %}
         </ul>
       </div>
@@ -62,14 +69,16 @@
     <footer class="detail-actions">
       {% set logged_in = session.get('user_id') or session.get('uid') %}
       {% if whatsapp %}
-        {% if logged_in %}
-          <a class="btn primary" href="{{ whatsapp }}" target="_blank" rel="noopener">Message on WhatsApp</a>
-        {% else %}
-          <!-- <a class="btn primary" href="{{ url_for('auth.login', next=request.path) }}">Log in to message on WhatsApp</a> -->
-        {% endif %}
+      {% if logged_in %}
+      <a class="btn primary" href="{{ whatsapp }}" target="_blank" rel="noopener">Message on WhatsApp</a>
+      {% else %}
+      <!-- <a class="btn primary" href="{{ url_for('auth.login', next=request.path) }}">Log in to message on WhatsApp</a> -->
       {% endif %}
-      {% if session.get('role') == 'worker' and accept_url %}
-        <a class="btn" href="{{ accept_url }}">Accept &amp; Message</a>
+      {% endif %}
+      {% if session.get('role') == 'worker' %}
+      <form method="post" action="{{ url_for('jobs.accept_job', job_id=job.id) }}">
+        <button class="btn primary">Accept &amp; Message</button>
+      </form>
       {% endif %}
       <!-- <button class="btn ghost" type="button" id="copyLinkBtn">Copy link</button> -->
       <a class="btn ghost" href="{{ url_for('jobs.list_jobs') }}">Back to Jobs</a>
@@ -91,14 +100,14 @@
     </ul>
 
     {% if whatsapp %}
-      {% if logged_in %}
-        <a class="btn primary block" href="{{ whatsapp }}" target="_blank" rel="noopener">Message on WhatsApp</a>
-      {% else %}
-        <a class="btn primary block" href="{{ url_for('auth.login', next=request.path) }}">Log in to message</a>
-      {% endif %}
+    {% if logged_in %}
+    <a class="btn primary block" href="{{ whatsapp }}" target="_blank" rel="noopener">Message on WhatsApp</a>
+    {% else %}
+    <a class="btn primary block" href="{{ url_for('auth.login', next=request.path) }}">Log in to message</a>
+    {% endif %}
     {% endif %}
     {% if session.get('role') == 'worker' and accept_url %}
-      <a class="btn block" href="{{ accept_url }}">Accept &amp; Message</a>
+    <a class="btn block" href="{{ accept_url }}">Accept &amp; Message</a>
     {% endif %}
   </aside>
 </article>
@@ -126,9 +135,9 @@
 {% if whatsapp %}
 <div class="action-bar">
   {% if logged_in %}
-    <a class="btn primary block" href="{{ whatsapp }}" target="_blank" rel="noopener">Message on WhatsApp</a>
+  <a class="btn primary block" href="{{ whatsapp }}" target="_blank" rel="noopener">Message on WhatsApp</a>
   {% else %}
-    <a class="btn primary block" href="{{ url_for('auth.login', next=request.path) }}">Log in to message</a>
+  <a class="btn primary block" href="{{ url_for('auth.login', next=request.path) }}">Log in to message</a>
   {% endif %}
 </div>
 {% endif %}
@@ -137,7 +146,7 @@
 
 {% block extra_js %}
 <script>
-  (function() {
+  (function () {
     const btn = document.getElementById('copyLinkBtn');
     if (!btn) return;
     btn.addEventListener('click', async () => {
