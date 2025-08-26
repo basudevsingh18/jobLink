@@ -314,5 +314,47 @@ def seed():
     flash("Seeding is handled by the database on first startup.", "info")
     return redirect(url_for("jobs.list_jobs"))
 
+@bp.route("/all")
+def all_jobs():
+    q       = (request.args.get("q") or "").strip()
+    cat     = (request.args.get("category") or "").strip()
+    loc     = (request.args.get("location") or "").strip()
+    status  = (request.args.get("status") or "").strip()
+    view    = (request.args.get("view") or "grid").strip()   # grid | list
+    sort    = (request.args.get("sort") or "newest").strip() # newest | oldest | budget_hi | budget_lo
+    page    = int(request.args.get("page", 1))
+    page_sz = int(request.args.get("page_size", 18))
 
+    order_map = {
+        "newest":    "created_at.desc,id.desc",
+        "oldest":    "created_at.asc,id.asc",
+        "budget_hi": "budget.desc,created_at.desc",
+        "budget_lo": "budget.asc,created_at.desc",
+    }
+    order = order_map.get(sort, order_map["newest"])
 
+    # Build PostgREST filters
+    filters = {}
+    if cat:    filters["category"] = f"eq.{cat}"
+    if loc:    filters["location"] = f"eq.{loc}"
+    if status: filters["status"]   = f"eq.{status}"
+
+    jobs, total = api.list_jobs_api(
+        q=q, page=page, page_size=page_sz,
+        select="id,title,description,category,location,budget,created_at,status",
+        order=order,
+        filters=filters or None
+    )
+
+    # lightweight facet lists (from current result set; fine for v1)
+    categories = sorted({j.get("category") for j in jobs if j.get("category")})
+    locations  = sorted({j.get("location") for j in jobs if j.get("location")})
+
+    return render_template(
+        "all_jobs.html",
+        jobs=jobs, total=total or 0,
+        page=page, page_size=page_sz,
+        q=q, cat=cat, loc=loc, status=status,
+        sort=sort, view=view,
+        categories=categories, locations=locations
+    )

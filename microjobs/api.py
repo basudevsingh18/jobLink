@@ -5,16 +5,21 @@ import os
 import smtplib
 from flask import current_app
 import requests
+from typing import Any, Dict, Optional
+from werkzeug.security import generate_password_hash
 
-# PGRST_URL = os.getenv("PGRST_URL", "http://localhost:3000")
-BASE = "http://localhost:3000" 
+# -----------------------------
+# PostgREST base + headers
+# -----------------------------
+BASE = os.getenv("PGRST_URL", "http://localhost:3000")  # configurable via .env
 HEADERS = {
     "Content-Type": "application/json",
-    # This makes PostgREST return the inserted row(s) as JSON
-    "Prefer": "return=representation"
+    "Prefer": "return=representation",  # return rows after insert/update/delete
 }
 
-def _headers(token=None, extra: dict | None = None):
+PASSWORD_METHOD = os.getenv("PASSWORD_METHOD", "pbkdf2:sha256")
+
+def _headers(token: Optional[str] = None, extra: Optional[dict] = None):
     h = {"Accept": "application/json"}
     if token:
         h["Authorization"] = f"Bearer {token}"
@@ -22,31 +27,62 @@ def _headers(token=None, extra: dict | None = None):
         h.update(extra)
     return h
 
-def get_user_by_email(email: str):
-    # GET /users?email=eq.someone@example.com
-    r = requests.get(f"{BASE}/users", params={"email": f"eq.{email}"}, timeout=10)
+# -----------------------------
+# Users
+# -----------------------------
+def get_user_by_email(email: str) -> Optional[Dict[str, Any]]:
+    r = requests.get(
+        f"{BASE}/users",
+        params={"email": f"eq.{email}", "limit": "1"},
+        timeout=10,
+    )
     if not r.ok:
         raise RuntimeError(f"{r.status_code} {r.reason} :: {r.text}")
     rows = r.json()
     return rows[0] if rows else None
 
-def create_user(payload: dict):
+def create_user(payload: dict) -> Dict[str, Any]:
     resp = requests.post(f"{BASE}/users", json=payload, headers=HEADERS, timeout=10)
     if not resp.ok:
-        # Bubble up details so your flash() shows something helpful
         raise RuntimeError(f"{resp.status_code} {resp.reason} :: {resp.text}")
-
-    # With return=representation, body is a JSON array of created rows
     data = resp.json()
-    if isinstance(data, list) and data:
-        return data[0]  # first created row
-    elif isinstance(data, dict):
-        return data
-    else:
-        # Extremely defensive; shouldn't happen with return=representation
-        raise RuntimeError("Create succeeded but response body was not a row.")
+    return data[0] if isinstance(data, list) and data else data
 
-# ---------- JOBS ----------
+def update_user(user_id: int | str, payload: dict, *, token: str | None = None) -> Dict[str, Any]:
+    """Patch a user by primary key id."""
+    r = requests.patch(
+        f"{BASE}/users",
+        params={"id": f"eq.{user_id}"},
+        json=payload,
+        headers=_headers(token, extra=HEADERS),
+        timeout=10,
+    )
+    if not r.ok:
+        raise RuntimeError(f"{r.status_code} {r.reason} :: {r.text}")
+    data = r.json()
+    return data[0] if isinstance(data, list) and data else data
+
+def update_user_by_email(email: str, payload: dict, *, token: str | None = None) -> Dict[str, Any]:
+    """Patch a user by email (requires unique email)."""
+    r = requests.patch(
+        f"{BASE}/users",
+        params={"email": f"eq.{email}"},
+        json=payload,
+        headers=_headers(token, extra=HEADERS),
+        timeout=10,
+    )
+    if not r.ok:
+        raise RuntimeError(f"{r.status_code} {r.reason} :: {r.text}")
+    data = r.json()
+    return data[0] if isinstance(data, list) and data else data
+
+def update_user_password(email: str, new_password: str, *, token: str | None = None):
+    pw_hash = generate_password_hash(new_password, method=PASSWORD_METHOD)
+    return update_user_by_email(email, {"password_hash": pw_hash}, token=token)
+
+# -----------------------------
+# User events (audit)
+# -----------------------------
 def create_user_event(data: dict):
     """
     Insert an event into user_events via PostgREST.
@@ -59,11 +95,14 @@ def create_user_event(data: dict):
     """
     import json
     url = f"{BASE}/user_events"
-
     resp = requests.post(url, headers=HEADERS, data=json.dumps(data))
     if resp.status_code not in (200, 201):
         raise RuntimeError(f"User event insert failed: {resp.status_code} {resp.text}")
     return resp.json()
+
+# -----------------------------
+# Jobs
+# -----------------------------
 
 def list_jobs_api(
     *,
@@ -99,8 +138,10 @@ def list_jobs_api(
     total = None
     cr = r.headers.get("Content-Range")
     if cr and "/" in cr:
-        try: total = int(cr.split("/")[-1])
-        except ValueError: total = None
+        try:
+            total = int(cr.split("/")[-1])
+        except ValueError:
+            total = None
     return rows, total
 
 def get_job_api(job_id: int, *, token: str | None = None, select: str = "*"):
@@ -149,40 +190,12 @@ def delete_job_api(job_id: int, *, token: str | None = None):
     )
     if not r.ok:
         raise RuntimeError(f"{r.status_code} {r.reason} :: {r.text}")
-    # PostgREST returns deleted row(s) if Prefer=return=representation
     data = r.json()
     return data[0] if isinstance(data, list) and data else data
 
-# def send_email(to: str, subject: str, html: str, plain: str | None = None):
-    """
-    Send an email using SMTP.
-    Reads SMTP settings from Flask config:
-      MAIL_SERVER, MAIL_PORT, MAIL_USERNAME, MAIL_PASSWORD, MAIL_USE_TLS/SSL
-    """
-    sender = current_app.config.get("MAIL_USERNAME")
-    if not sender:
-        raise RuntimeError("MAIL_USERNAME not configured")
-
-    msg = MIMEMultipart("alternative")
-    msg["From"] = sender
-    msg["To"] = to
-    msg["Subject"] = subject
-
-    if plain:
-        msg.attach(MIMEText(plain, "plain"))
-    msg.attach(MIMEText(html, "html"))
-
-    with smtplib.SMTP(current_app.config.get("MAIL_SERVER"),
-                      current_app.config.get("MAIL_PORT")) as server:
-        if current_app.config.get("MAIL_USE_TLS"):
-            server.starttls()
-        if current_app.config.get("MAIL_USERNAME") and current_app.config.get("MAIL_PASSWORD"):
-            server.login(
-                current_app.config["MAIL_USERNAME"],
-                current_app.config["MAIL_PASSWORD"]
-            )
-        server.sendmail(sender, [to], msg.as_string())
-
+# -----------------------------
+# Email (SMTP)
+# -----------------------------
 def send_email(to: str, subject: str, html: str, plain: str | None = None):
     """
     Send an email using SMTP.

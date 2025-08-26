@@ -5,47 +5,102 @@
 {% endblock %}
 
 {% block content %}
-<article class="detail card">
-  <header class="detail-head">
-    <div class="title-col">
-      <h1>{{ job.title }}</h1>
-      <div class="chips">
-        <span class="chip">{{ job.category or 'Other' }}</span>
-        <span class="chip soft">{{ job.location }}</span>
-      </div>
-    </div>
-    <div class="price">
-      <span class="amount">{{ budget_display }}</span>
-      <span class="label">Budget</span>
-    </div>
-  </header>
+<nav class="crumbs">
+  <a href="{{ url_for('jobs.list_jobs') }}">Jobs</a>
+  {% if job.category %}<span>/</span><a href="{{ url_for('jobs.list_jobs', category=job.category) }}">{{ job.category }}</a>{% endif %}
+  <span>/</span><span class="crumb-current">{{ job.title }}</span>
+</nav>
 
-  <section class="detail-body">
-    <p>{{ job.description }}</p>
-    <div class="meta">
-      <span>Posted {{ created_at_display }}</span>
-      {% if job.status %}<span>Status: {{ job.status }}</span>{% endif %}
-    </div>
+<article class="detail">
+  <!-- MAIN -->
+  <section class="detail-main card">
+    <header class="detail-head">
+      <div class="title-col">
+        <h1>{{ job.title }}</h1>
+        <div class="chips">
+          <span class="chip">{{ job.category or 'Other' }}</span>
+          <span class="chip soft">{{ job.location or 'Remote' }}</span>
+          {% if job.status %}<span class="chip soft">{{ job.status|capitalize }}</span>{% endif %}
+        </div>
+
+        <div class="meta-row">
+          <span class="meta">
+            <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7m0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z"/></svg>
+            {{ job.location or 'Remote' }}
+          </span>
+          <span class="meta">
+            <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v13a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2m0 15H5V10h14z"/></svg>
+            Posted {{ created_at_display }}
+          </span>
+        </div>
+      </div>
+
+      <div class="price">
+        <span class="amount">{{ budget_display }}</span>
+        <span class="label">Budget</span>
+      </div>
+    </header>
+
+    <section class="detail-body">
+      <h2 class="sr-only">Description</h2>
+      <div class="prose">
+        {{ job.description }}
+      </div>
+
+      {% if job.tags %}
+      <div class="tags-wrap">
+        <h3>Skills / Tags</h3>
+        <ul class="tags">
+          {% for t in job.tags %}
+            <li class="chip chip--ghost">{{ t }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+    </section>
+
+    <footer class="detail-actions">
+      {% set logged_in = session.get('user_id') or session.get('uid') %}
+      {% if whatsapp %}
+        {% if logged_in %}
+          <a class="btn primary" href="{{ whatsapp }}" target="_blank" rel="noopener">Message on WhatsApp</a>
+        {% else %}
+          <!-- <a class="btn primary" href="{{ url_for('auth.login', next=request.path) }}">Log in to message on WhatsApp</a> -->
+        {% endif %}
+      {% endif %}
+      {% if session.get('role') == 'worker' and accept_url %}
+        <a class="btn" href="{{ accept_url }}">Accept &amp; Message</a>
+      {% endif %}
+      <!-- <button class="btn ghost" type="button" id="copyLinkBtn">Copy link</button> -->
+      <a class="btn ghost" href="{{ url_for('jobs.list_jobs') }}">Back to Jobs</a>
+    </footer>
   </section>
 
-  <footer class="detail-actions">
-    {% if whatsapp %}
-    {% if session.get('uid') %}
-    <!-- User is logged in -->
-    <a class="btn primary" href="{{ whatsapp }}" target="_blank" rel="noopener">Message on WhatsApp</a>
-    {% else %}
-    <!-- User is not logged in -->
-    <a class="btn primary" href="{{ url_for('auth.login', next=request.path) }}">
-      Log in to message on WhatsApp
-    </a>
+  <!-- ASIDE / APPLY BOX -->
+  <aside class="apply-box card">
+    <div class="apply-price">
+      <div class="amount">{{ budget_display }}</div>
+      <div class="label">Budget</div>
+    </div>
 
+    <ul class="apply-meta">
+      <li><span>Location</span><strong>{{ job.location or 'Remote' }}</strong></li>
+      <li><span>Category</span><strong>{{ job.category or 'Other' }}</strong></li>
+      <li><span>Posted</span><strong>{{ created_at_display }}</strong></li>
+      {% if job.status %}<li><span>Status</span><strong>{{ job.status|capitalize }}</strong></li>{% endif %}
+    </ul>
+
+    {% if whatsapp %}
+      {% if logged_in %}
+        <a class="btn primary block" href="{{ whatsapp }}" target="_blank" rel="noopener">Message on WhatsApp</a>
+      {% else %}
+        <a class="btn primary block" href="{{ url_for('auth.login', next=request.path) }}">Log in to message</a>
+      {% endif %}
     {% endif %}
+    {% if session.get('role') == 'worker' and accept_url %}
+      <a class="btn block" href="{{ accept_url }}">Accept &amp; Message</a>
     {% endif %}
-    <a class="btn ghost" href="{{ url_for('jobs.list_jobs') }}">Back to Jobs</a>
-    {% if session.get('role') == 'worker' %}
-    <a class="btn" href="{{ accept_url }}">Accept & Message</a>
-    {% endif %}
-  </footer>
+  </aside>
 </article>
 
 {% if related_jobs and related_jobs|length %}
@@ -58,7 +113,7 @@
         <h4>{{ r.title }}</h4>
       </div>
       <div class="rel-meta">
-        <span class="loc">{{ r.location }}</span>
+        <span class="loc">{{ r.location or 'Remote' }}</span>
         <span class="budget">G${{ r.budget }}</span>
       </div>
     </a>
@@ -66,4 +121,35 @@
   </div>
 </section>
 {% endif %}
+
+<!-- Mobile action bar -->
+{% if whatsapp %}
+<div class="action-bar">
+  {% if logged_in %}
+    <a class="btn primary block" href="{{ whatsapp }}" target="_blank" rel="noopener">Message on WhatsApp</a>
+  {% else %}
+    <a class="btn primary block" href="{{ url_for('auth.login', next=request.path) }}">Log in to message</a>
+  {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  (function() {
+    const btn = document.getElementById('copyLinkBtn');
+    if (!btn) return;
+    btn.addEventListener('click', async () => {
+      const url = window.location.href;
+      try {
+        await navigator.clipboard.writeText(url);
+        btn.textContent = 'Link copied!';
+        setTimeout(() => btn.textContent = 'Copy link', 1400);
+      } catch (e) {
+        btn.textContent = 'Press Ctrl+C to copy';
+      }
+    });
+  })();
+</script>
 {% endblock %}

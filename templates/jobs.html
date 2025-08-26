@@ -25,18 +25,51 @@
 </section>
 
 {% if jobs and jobs|length > 0 %}
-<div class="jobs-grid alt">
+<div class="jobs-grid {% if view == 'list' %}alt{% endif %}">
   {% for j in jobs %}
-    <a class="card job-card" href="{{ url_for('jobs.job_detail', job_id=j.id) }}">
-      <div class="job-top">
-        <h3>{{ j.title }}</h3>
-        <span class="badge">{{ j.category or 'Other' }}</span>
+    <a class="card job-card" href="{{ url_for('jobs.job_detail', job_id=j.id) }}" aria-label="{{ j.title }}">
+      <div class="job-accent" aria-hidden="true"></div>
+
+      <div class="job-body">
+        <header class="job-top">
+          <h3 class="job-title">{{ j.title }}</h3>
+
+          <div class="job-badges">
+            {% if j.is_featured %}<span class="chip chip--lite">Featured</span>{% endif %}
+            <span class="chip chip--cat">{{ j.category or 'Other' }}</span>
+          </div>
+        </header>
+
+        <p class="desc">{{ j.description }}</p>
+
+        {% if j.tags %}
+        <ul class="tags">
+          {% for t in j.tags[:3] %}
+            <li class="chip chip--ghost">{{ t }}</li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+
+        <footer class="job-meta">
+          <span class="meta">
+            <!-- location icon -->
+            <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7m0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z"/></svg>
+            {{ j.location or 'Remote' }}
+          </span>
+          <span class="meta">
+            <!-- money icon -->
+            <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 6h18v12H3zM5 8v8h14V8zM7 10h6v2H7z"/></svg>
+            G${{ '{:,.0f}'.format(j.budget) if j.budget else '—' }}
+          </span>
+          <span class="meta">
+            <!-- calendar icon -->
+            <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v13a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2m0 15H5V10h14z"/></svg>
+            {{ j.posted_human or (j.created_at[:10] if j.created_at) }}
+          </span>
+        </footer>
       </div>
-      <p class="desc">{{ j.description }}</p>
-      <div class="job-meta">
-        <span class="loc">{{ j.location }}</span>
-        <span class="budget">G${{ j.budget }}</span>
-      </div>
+
+      <div class="job-cta" aria-hidden="true">›</div>
     </a>
   {% endfor %}
 </div>

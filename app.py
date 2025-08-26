@@ -15,7 +15,9 @@ def create_app():
         MAIL_PORT=int(os.getenv("MAIL_PORT", 587)),
         MAIL_USE_TLS=os.getenv("MAIL_USE_TLS", "true").lower() == "true",
         MAIL_USERNAME=os.getenv("MAIL_USERNAME"),
-        MAIL_PASSWORD=os.getenv("MAIL_PASSWORD")
+        MAIL_PASSWORD=os.getenv("MAIL_PASSWORD"),
+        SESSION_COOKIE_SECURE=False,      # you’re on http:// in dev
+        SESSION_COOKIE_SAMESITE="Lax",
     )
 
     # Register blueprints

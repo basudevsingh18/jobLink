@@ -1,0 +1,150 @@
+{% extends 'base.html' %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/all_jobs.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="alljobs-head">
+    <h1>All Jobs</h1>
+    <p class="sub">Browse every open task. Use filters, sort, and switch views.</p>
+</section>
+
+<form class="toolbar card" method="get">
+    <input type="text" name="q" placeholder="Search tasks…" value="{{ q or '' }}" aria-label="Search jobs">
+
+    <select name="category" aria-label="Category">
+        <option value="">All categories</option>
+        {% for c in categories %}
+        <option value="{{ c }}" {% if cat==c %}selected{% endif %}>{{ c }}</option>
+        {% endfor %}
+    </select>
+
+    <select name="location" aria-label="Location">
+        <option value="">All locations</option>
+        {% for l in locations %}
+        <option value="{{ l }}" {% if loc==l %}selected{% endif %}>{{ l }}</option>
+        {% endfor %}
+    </select>
+
+    <select name="sort" aria-label="Sort">
+        <option value="newest" {% if sort=='newest' %}selected{% endif %}>Newest</option>
+        <option value="oldest" {% if sort=='oldest' %}selected{% endif %}>Oldest</option>
+        <option value="budget_hi" {% if sort=='budget_hi' %}selected{% endif %}>Budget ↑</option>
+        <option value="budget_lo" {% if sort=='budget_lo' %}selected{% endif %}>Budget ↓</option>
+    </select>
+
+    <input type="hidden" name="view" id="viewInput" value="{{ view or 'grid' }}">
+    <button type="submit" class="btn">Apply</button>
+
+    <div class="toolbar-right">
+        <button type="button" class="iconbtn" id="toggleView" aria-label="Toggle view" title="Toggle view">
+            {% if view=='list' %}▥{% else %}≡{% endif %}
+        </button>
+    </div>
+</form>
+
+<div class="results-meta">
+    <span>{{ total }} result{{ total!=1 and 's' or '' }}</span>
+    {% if q or cat or loc %}<a class="clear" href="{{ url_for('jobs.all_jobs') }}">Clear filters</a>{% endif %}
+</div>
+
+{% if jobs and jobs|length %}
+<div class="jobs-grid {% if view=='list' %}alt{% endif %}">
+    {% for j in jobs %}
+    <a class="card job-card" href="{{ url_for('jobs.job_detail', job_id=j.id) }}" aria-label="{{ j.title }}">
+        <div class="job-accent" aria-hidden="true"></div>
+        <div class="job-body">
+            <header class="job-top">
+                <h3 class="job-title">{{ j.title }}</h3>
+                <div class="job-badges">
+                    <span class="chip chip--cat">{{ j.category or 'Other' }}</span>
+                </div>
+            </header>
+            <p class="desc">{{ j.description }}</p>
+            {% if j.tags %}
+            <ul class="tags">
+                {% for t in (j.tags or [])[:3] %}<li class="chip chip--ghost">{{ t }}</li>{% endfor %}
+            </ul>
+            {% endif %}
+            <footer class="job-meta">
+                <span class="meta">
+                    <svg width="14" height="14" viewBox="0 0 24 24">
+                        <path fill="currentColor"
+                            d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7m0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z" />
+                    </svg>
+                    {{ j.location or 'Remote' }}
+                </span>
+                <span class="meta">
+                    <svg width="14" height="14" viewBox="0 0 24 24">
+                        <path fill="currentColor" d="M3 6h18v12H3zM5 8v8h14V8zM7 10h6v2H7z" />
+                    </svg>
+                    G${{ '{:,.0f}'.format(j.budget) if j.budget else '—' }}
+                </span>
+                <span class="meta">
+                    <svg width="14" height="14" viewBox="0 0 24 24">
+                        <path fill="currentColor"
+                            d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v13a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2m0 15H5V10h14z" />
+                    </svg>
+                    {{ (j.created_at or '')[:10] }}
+                </span>
+            </footer>
+        </div>
+        <div class="job-cta" aria-hidden="true">›</div>
+    </a>
+    {% endfor %}
+</div>
+
+<!-- Pagination -->
+<nav class="pager">
+    {% set has_prev = page > 1 %}
+    {% set has_next = total and (page * page_size) < total %} {% if has_prev %} <a class="btn"
+        href="{{ url_for('jobs.all_jobs', q=q, category=cat, location=loc, sort=sort, view=view, page=page-1, page_size=page_size) }}">
+        ‹ Prev</a>
+        {% endif %}
+        <span>Page {{ page }}</span>
+        {% if has_next %}
+        <a class="btn"
+            href="{{ url_for('jobs.all_jobs', q=q, category=cat, location=loc, sort=sort, view=view, page=page+1, page_size=page_size) }}">Next
+            ›</a>
+        {% endif %}
+</nav>
+
+{% else %}
+<div class="card empty">
+    <p>No results. Try clearing filters or different keywords.</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    (function () {
+        // view toggle
+        const btn = document.getElementById('toggleView');
+        const input = document.getElementById('viewInput');
+        if (btn && input) {
+            btn.addEventListener('click', () => {
+                input.value = (input.value === 'list') ? 'grid' : 'list';
+                btn.closest('form').submit();
+            });
+        }
+        // remember filters locally
+        const form = document.querySelector('.toolbar');
+        const LS = 'allJobsFilters';
+        if (form) {
+            try {
+                const saved = JSON.parse(localStorage.getItem(LS) || '{}');
+                ['q', 'category', 'location', 'sort', 'view'].forEach(k => {
+                    const el = form.querySelector(`[name="${k}"]`);
+                    if (el && saved[k] != null) el.value = saved[k];
+                });
+            } catch { }
+            form.addEventListener('submit', () => {
+                const data = Object.fromEntries(new FormData(form));
+                localStorage.setItem(LS, JSON.stringify(data));
+            });
+        }
+    })();
+</script>
+{% endblock %}
