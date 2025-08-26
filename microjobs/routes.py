@@ -113,17 +113,38 @@ def home():
 
 @bp.route("/jobs")
 def list_jobs():
+    q   = (request.args.get("q") or "").strip()
+    cat = (request.args.get("category") or "").strip()
+    loc = (request.args.get("location") or "").strip()
     page = int(request.args.get("page", 1))
-    q = request.args.get("q") or None
-    status = request.args.get("status") or None
+    page_size = 20
+
+    filters = {}
+    if cat: filters["category"] = f"eq.{cat}"
+    if loc: filters["location"] = f"eq.{loc}"
 
     try:
-        rows, total = api.list_jobs_api(q=q, status=status, page=page, page_size=20)
+        rows, total = api.list_jobs_api(
+            q=q, page=page, page_size=page_size,
+            select="id,title,description,category,location,budget,created_at,status",
+            order="created_at.desc,id.desc",
+            filters=filters or None,
+        )
     except Exception as e:
         flash(f"Could not load jobs: {e}", "danger")
-        return render_template("jobs.html", jobs=[], total=0, page=page)
+        rows, total = [], 0
 
-    return render_template("jobs.html", jobs=rows, total=total or len(rows), page=page)
+    # facets (always populated)
+    categories = api.list_job_categories()
+    locations  = api.list_job_locations()
+
+    return render_template(
+        "jobs.html",
+        jobs=rows, total=total or len(rows),
+        page=page, page_size=page_size,
+        q=q, cat=cat, loc=loc,
+        categories=categories, locations=locations,
+    )
 
 @bp.route("/post-job", methods=["GET", "POST"])
 def post_job():

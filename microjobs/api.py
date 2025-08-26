@@ -27,6 +27,36 @@ def _headers(token: Optional[str] = None, extra: Optional[dict] = None):
         h.update(extra)
     return h
 
+# ---- Facet helpers: distinct categories/locations ----
+def _distinct_values(table: str, column: str, *, token: str | None = None, limit: int = 2000) -> list[str]:
+    """
+    Return a sorted, de-duplicated list of non-null values for a single column.
+    Uses a simple select + client-side dedupe (PostgREST has no 'distinct' param).
+    """
+    params = {
+        "select": column,
+        column: "not.is.null",          # filter out NULLs
+        "order": f"{column}.asc",       # stable order from API
+        "limit": str(limit),
+    }
+    r = requests.get(f"{BASE}/{table}", params=params, headers=_headers(token), timeout=10)
+    if not r.ok:
+        raise RuntimeError(f"{r.status_code} {r.reason} :: {r.text}")
+    seen, out = set(), []
+    for row in r.json():
+        v = row.get(column)
+        if v is not None and v not in seen:
+            seen.add(v)
+            out.append(v)
+    return out
+
+def list_job_categories(*, token: str | None = None) -> list[str]:
+    return _distinct_values("jobs", "category", token=token)
+
+def list_job_locations(*, token: str | None = None) -> list[str]:
+    return _distinct_values("jobs", "location", token=token)
+
+
 # -----------------------------
 # Users
 # -----------------------------
