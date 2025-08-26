@@ -1,4 +1,5 @@
 # app.py
+import os
 from flask import Flask
 from microjobs.routes import bp as jobs_bp
 from microjobs.auth import bp as auth_bp
@@ -7,7 +8,15 @@ from microjobs.pages import bp as pages_bp
 
 def create_app():
     app = Flask(__name__)
-    app.secret_key = "dev-secret"   # change in production
+
+    app.config.update(
+        SECRET_KEY=os.getenv("SECRET_KEY"),
+        MAIL_SERVER=os.getenv("MAIL_SERVER", "smtp.gmail.com"),
+        MAIL_PORT=int(os.getenv("MAIL_PORT", 587)),
+        MAIL_USE_TLS=os.getenv("MAIL_USE_TLS", "true").lower() == "true",
+        MAIL_USERNAME=os.getenv("MAIL_USERNAME"),
+        MAIL_PASSWORD=os.getenv("MAIL_PASSWORD")
+    )
 
     # Register blueprints
     app.register_blueprint(jobs_bp)

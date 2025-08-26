@@ -14,6 +14,7 @@ TODO (production):
 """
 
 from datetime import datetime, timedelta
+import os
 import token
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 import hashlib
@@ -27,7 +28,7 @@ from flask_limiter.util import get_remote_address
 bp = Blueprint("auth", __name__, url_prefix="/auth")
 limiter = Limiter(key_func=get_remote_address)
 
-
+base_url = os.getenv("APP_URL", "http://localhost:5000")
 # -----------------------------
 # Helpers
 # -----------------------------
@@ -85,7 +86,7 @@ def register():
     )
 
     # Send email (use your mailer/adapter)
-    verify_url = url_for("auth.verify_email", token=token, _external=True)
+    verify_url = f"{base_url}{url_for('auth.verify_email', token=token)}"
 
     api.send_email(
         to=email,

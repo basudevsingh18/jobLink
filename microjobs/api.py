@@ -65,13 +65,6 @@ def create_user_event(data: dict):
         raise RuntimeError(f"User event insert failed: {resp.status_code} {resp.text}")
     return resp.json()
 
-def send_email(to: str, subject: str, html: str, plain: str | None = None):
-    print("=== MOCK EMAIL ===")
-    print("To:", to)
-    print("Subject:", subject)
-    print("HTML:", html)
-    print("=================")
-
 def list_jobs_api(
     *,
     q: str | None = None,
@@ -165,6 +158,36 @@ def delete_job_api(job_id: int, *, token: str | None = None):
     Send an email using SMTP.
     Reads SMTP settings from Flask config:
       MAIL_SERVER, MAIL_PORT, MAIL_USERNAME, MAIL_PASSWORD, MAIL_USE_TLS/SSL
+    """
+    sender = current_app.config.get("MAIL_USERNAME")
+    if not sender:
+        raise RuntimeError("MAIL_USERNAME not configured")
+
+    msg = MIMEMultipart("alternative")
+    msg["From"] = sender
+    msg["To"] = to
+    msg["Subject"] = subject
+
+    if plain:
+        msg.attach(MIMEText(plain, "plain"))
+    msg.attach(MIMEText(html, "html"))
+
+    with smtplib.SMTP(current_app.config.get("MAIL_SERVER"),
+                      current_app.config.get("MAIL_PORT")) as server:
+        if current_app.config.get("MAIL_USE_TLS"):
+            server.starttls()
+        if current_app.config.get("MAIL_USERNAME") and current_app.config.get("MAIL_PASSWORD"):
+            server.login(
+                current_app.config["MAIL_USERNAME"],
+                current_app.config["MAIL_PASSWORD"]
+            )
+        server.sendmail(sender, [to], msg.as_string())
+
+def send_email(to: str, subject: str, html: str, plain: str | None = None):
+    """
+    Send an email using SMTP.
+    Reads SMTP settings from Flask config:
+      MAIL_SERVER, MAIL_PORT, MAIL_USERNAME, MAIL_PASSWORD, MAIL_USE_TLS
     """
     sender = current_app.config.get("MAIL_USERNAME")
     if not sender:
