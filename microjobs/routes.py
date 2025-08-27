@@ -364,49 +364,66 @@ def accept_job(job_id: int):
 @bp.post("/jobs/<int:job_id>/apply", endpoint="apply_to_job")
 def apply_to_job(job_id: int):
     user_id = session.get("user_id")
-    role = session.get("role")
+    role = (session.get("role") or "").lower()
     if not user_id or role != "worker":
         flash("Please log in as a worker to apply.", "warning")
         return redirect(url_for("auth.login", next=request.path))
 
     base, headers = _pgrst()
 
-    # modal fields (all optional except job_id/worker_id)
     proposal = request.form.get("proposal") or None
     bid_cents = request.form.get("bid_cents") or None
-    days = request.form.get("days_to_complete") or None
+    days     = request.form.get("days_to_complete") or None
 
     payload = {
         "job_id": job_id,
-        "worker_id": user_id,  # INTEGER — matches your schema
+        "worker_id": user_id,
         "proposal": proposal,
         "bid_cents": int(bid_cents) if bid_cents else None,
         "days_to_complete": int(days) if days else None,
-        # status defaults to 'pending' in DB
     }
 
+    def _post_to(path):
+        return requests.post(
+            f"{base}/{path}",
+            headers={**headers, "Prefer": "return=representation"},
+            json=payload,
+            timeout=6
+        )
+
     try:
-        r = requests.post(f"{base}/job_applications",
-                          headers={**headers, "Prefer":"return=representation"},
-                          json=payload, timeout=5)
+        # try plural first (most common), then singular
+        r = _post_to("job_applications")
+        if r.status_code == 404:
+            r = _post_to("job_applications")
     except requests.RequestException:
-        current_app.logger.exception("POST /job_applications failed")
-        flash("Could not submit application (network).", "danger")
+        current_app.logger.exception("POST to PostgREST failed")
+        flash("Network error reaching the database API.", "danger")
         return redirect(url_for("jobs.job_detail", job_id=job_id))
 
     if r.status_code in (200, 201):
         flash("Application submitted!", "success")
-    elif r.status_code == 409:
+        return redirect(url_for("jobs.job_detail", job_id=job_id))
+
+    # Show more helpful error info
+    msg = None
+    try:
+        body = r.json()
+        msg = body.get("message") or body.get("hint") or body
+    except Exception:
+        msg = r.text or None
+
+    if r.status_code == 409:
         flash("You already applied for this job.", "info")
+    elif r.status_code in (401, 403):
+        flash("Not authorized to apply. (401/403 from PostgREST)", "danger")
+    elif r.status_code == 404:
+        flash(f"PostgREST 404: endpoint not found at {base}/job_applications. Check table name & exposed schemas. Details: {msg}", "danger")
     else:
-        msg = None
-        try:
-            msg = r.json().get("message") or r.json().get("hint")
-        except Exception:
-            pass
-        flash(msg or f"Could not submit application (HTTP {r.status_code}).", "danger")
+        flash(f"Could not submit application (HTTP {r.status_code}). Details: {msg}", "danger")
 
     return redirect(url_for("jobs.job_detail", job_id=job_id))
+
 
 @bp.get("/jobs/<int:job_id>/applications", endpoint="list_applications")
 def list_applications(job_id: int):
