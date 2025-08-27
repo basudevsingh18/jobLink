@@ -313,7 +313,7 @@ def accept_job(job_id: int):
         return redirect(url_for("jobs.view_job", job_id=job_id))
 
     flash("You have accepted the job!", "success")
-    return redirect(url_for("jobs.view_job", job_id=job_id))
+    return redirect(url_for("job.job_detail", job_id=job_id))
 
 @bp.route("/my-jobs")
 def my_jobs():
