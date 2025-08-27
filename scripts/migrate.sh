@@ -3,7 +3,8 @@
 # Defaults: CONTAINER_NAME=jl_postgres, DB_NAME=joblink, DB_USER=joblink, MIG_DIR=../db/init
 set -euo pipefail
 
-CONTAINER="${1:-joblink-db-1}"
+CONTAINER="${1:-jo
+blink-db-1}"
 DB="${2:-joblink}"
 USER="${3:-joblink}"
 # If MIG_DIR provided as 4th arg use it, else default to repo-relative ../db/init

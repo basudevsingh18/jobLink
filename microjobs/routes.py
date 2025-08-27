@@ -18,7 +18,7 @@ from functools import wraps
 from os import abort
 import os
 
-from flask import Blueprint, jsonify, render_template, request, redirect, url_for, flash, session
+from flask import Blueprint, current_app, jsonify, render_template, request, redirect, url_for, flash, session
 from urllib.parse import quote_plus
 from datetime import datetime
 from typing import Optional
@@ -291,29 +291,56 @@ def job_detail(job_id: int):
     )
 
 @bp.post("/jobs/<int:job_id>/accept")
-@worker_required
 def accept_job(job_id: int):
-    worker_id = session["user_id"]
+    user_id = session.get("user_id")
+    role = session.get("role")
+    if not user_id or role != "worker":
+        flash("Please log in as a worker to accept jobs.", "warning")
+        return redirect(url_for("account.login"))
+
+    base_url = os.environ.get("POSTGREST_URL", "http://localhost:3000")
+    token = os.environ.get("PGRST_SERVICE_TOKEN", "")
 
     headers = {
-        "Authorization": f"Bearer {os.environ.get('PGRST_SERVICE_TOKEN','')}",
-        "Content-Type": "application/json"
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "Prefer": "return=representation"  # get inserted row back
     }
-    url = f"{os.environ.get('POSTGREST_URL','http://localhost:3000')}/rpc/accept_job"
-    r = requests.post(url, json={"p_job_id": job_id, "p_worker_id": worker_id}, headers=headers, timeout=5)
 
-    if r.status_code != 200:
-        flash("Server error while accepting job.", "danger")
-        return redirect(url_for("jobs.view_job", job_id=job_id))
+    try:
+        r = requests.post(
+            f"{base_url}/accepted_jobs",
+            headers=headers,
+            json={"job_id": job_id, "worker_id": user_id},
+            timeout=5
+        )
+    except requests.RequestException:
+        current_app.logger.exception("POST /accepted_jobs failed")
+        flash("Could not reach the server to accept the job.", "danger")
+        return redirect(url_for("jobs.job_detail", job_id=job_id))
 
-    result = r.json()
-    if not result.get("ok"):
-        reason = result.get("reason", "Not available")
-        flash(f"Could not accept job: {reason}.", "warning")
-        return redirect(url_for("jobs.view_job", job_id=job_id))
+    if r.status_code in (200, 201):
+        flash("You have accepted the job!", "success")
+        return redirect(url_for("jobs.job_detail", job_id=job_id))
 
-    flash("You have accepted the job!", "success")
-    return redirect(url_for("job.job_detail", job_id=job_id))
+    # Friendly messages for common cases
+    msg = None
+    try:
+        body = r.json()
+        msg = body.get("message") or body.get("hint")
+    except Exception:
+        pass
+
+    if r.status_code == 409:
+        flash("This job has already been accepted by someone else.", "warning")
+    elif r.status_code == 400:
+        flash(msg or "Job cannot be accepted in its current state.", "warning")
+    elif r.status_code in (401, 403):
+        flash("Not authorized to accept jobs.", "danger")
+    else:
+        flash(f"Server error while accepting job (HTTP {r.status_code}).", "danger")
+
+    return redirect(url_for("jobs.job_detail", job_id=job_id))
 
 @bp.route("/my-jobs")
 def my_jobs():

@@ -84,10 +84,12 @@
     <a class="btn primary block" href="{{ url_for('auth.login', next=request.path) }}">Log in to message</a>
     {% endif %}
     {% endif %}
+
     {% if job.status == 'open' and session.role == 'worker' %}
   <form method="post" action="{{ url_for('jobs.accept_job', job_id=job.id) }}">
-    <a class="btn block">Accept Job</a>
-  </form>
+  <button class="btn block" type="submit">Accept this job</button>
+</form>
+
 {% else %}
   <small class="text-muted">Status: {{ job.status }}</small>
 {% endif %}
