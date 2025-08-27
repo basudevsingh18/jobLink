@@ -54,33 +54,11 @@
         {{ job.description }}
       </div>
 
-      {% if job.tags %}
-      <div class="tags-wrap">
-        <h3>Skills / Tags</h3>
-        <ul class="tags">
-          {% for t in job.tags %}
-          <li class="chip chip--ghost">{{ t }}</li>
-          {% endfor %}
-        </ul>
-      </div>
-      {% endif %}
     </section>
 
     <footer class="detail-actions">
       {% set logged_in = session.get('user_id') or session.get('uid') %}
-      {% if whatsapp %}
-      {% if logged_in %}
-      <a class="btn primary" href="{{ whatsapp }}" target="_blank" rel="noopener">Message on WhatsApp</a>
-      {% else %}
-      <!-- <a class="btn primary" href="{{ url_for('auth.login', next=request.path) }}">Log in to message on WhatsApp</a> -->
-      {% endif %}
-      {% endif %}
-      {% if session.get('role') == 'worker' %}
-      <form method="post" action="{{ url_for('jobs.accept_job', job_id=job.id) }}">
-        <button class="btn primary">Accept &amp; Message</button>
-      </form>
-      {% endif %}
-      <!-- <button class="btn ghost" type="button" id="copyLinkBtn">Copy link</button> -->
+
       <a class="btn ghost" href="{{ url_for('jobs.list_jobs') }}">Back to Jobs</a>
     </footer>
   </section>
@@ -106,9 +84,17 @@
     <a class="btn primary block" href="{{ url_for('auth.login', next=request.path) }}">Log in to message</a>
     {% endif %}
     {% endif %}
-    {% if session.get('role') == 'worker' and accept_url %}
+    {% if job.status == 'open' and session.role == 'worker' %}
+  <form method="post" action="{{ url_for('jobs.accept_job', job_id=job.id) }}">
+    <a class="btn block">Accept Job</a>
+  </form>
+{% else %}
+  <small class="text-muted">Status: {{ job.status }}</small>
+{% endif %}
+
+    <!-- {% if session.get('role') == 'worker' and accept_url %}
     <a class="btn block" href="{{ accept_url }}">Accept &amp; Message</a>
-    {% endif %}
+    {% endif %} -->
   </aside>
 </article>
 

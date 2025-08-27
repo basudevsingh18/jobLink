@@ -14,11 +14,16 @@ Notes:
 """
 
 from __future__ import annotations
+from functools import wraps
+from os import abort
+import os
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session
+from flask import Blueprint, jsonify, render_template, request, redirect, url_for, flash, session
 from urllib.parse import quote_plus
 from datetime import datetime
 from typing import Optional
+
+import requests
 from . import api
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -109,6 +114,18 @@ def _current_user_id():
 
 def _is_worker():
     return (session.get("role") or "").lower() == "worker"
+
+def worker_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if "user_id" not in session:
+            flash("You must log in first.", "warning")
+            return redirect(url_for("account.login"))
+        if session.get("role") != "worker":
+            flash("Only workers can accept jobs.", "danger")
+            return redirect(url_for("jobs.list_jobs"))
+        return f(*args, **kwargs)
+    return decorated
 
 # --------------------------------------------------------------------------------------
 # Routes
@@ -273,52 +290,30 @@ def job_detail(job_id: int):
         related_jobs=related,
     )
 
-@bp.post("/job/<int:job_id>/accept")
+@bp.post("/jobs/<int:job_id>/accept")
+@worker_required
 def accept_job(job_id: int):
-    uid = _current_user_id()
-    if not uid:
-        flash("Please log in to accept this job.", "warning")
-        return redirect(url_for("auth.login", next=request.path))
-    if not _is_worker():
-        flash("Only workers can accept jobs.", "warning")
-        return redirect(url_for("jobs.job_detail", job_id=job_id))
+    worker_id = session["user_id"]
 
-    # Load the job (for message + validation)
-    try:
-        job = api.get_job_api(job_id)
-    except Exception:
-        job = None
-    if not job:
-        flash("Job not found.", "danger")
-        return redirect(url_for("jobs.list_jobs"))
+    headers = {
+        "Authorization": f"Bearer {os.environ.get('PGRST_SERVICE_TOKEN','')}",
+        "Content-Type": "application/json"
+    }
+    url = f"{os.environ.get('POSTGREST_URL','http://localhost:3000')}/rpc/accept_job"
+    r = requests.post(url, json={"p_job_id": job_id, "p_worker_id": worker_id}, headers=headers, timeout=5)
 
-    # Insert into accepted_jobs (idempotent thanks to UNIQUE(job_id, worker_id))
-    try:
-        api.create_accepted_job(job_id=job_id, worker_id=uid)
-    except Exception as e:
-        flash(f"Could not record acceptance: {e}", "danger")
-        return redirect(url_for("jobs.job_detail", job_id=job_id))
+    if r.status_code != 200:
+        flash("Server error while accepting job.", "danger")
+        return redirect(url_for("jobs.view_job", job_id=job_id))
 
-    # OPTIONAL: if your jobs table has these columns, also mark assigned:
-    # try:
-    #     api.update_job_api(job_id, {
-    #         "status": "assigned",
-    #         "worker_id": uid,
-    #         "assigned_at": datetime.now(timezone.utc).isoformat()
-    #     })
-    # except Exception:
-    #     pass  # not critical for messaging
+    result = r.json()
+    if not result.get("ok"):
+        reason = result.get("reason", "Not available")
+        flash(f"Could not accept job: {reason}.", "warning")
+        return redirect(url_for("jobs.view_job", job_id=job_id))
 
-    # Build WA link
-    phone = normalize_phone(job.get("contact") or "")
-    title = job.get("title", "")
-    whatsapp = wa_link(
-        phone,
-        f"Hi, I saw your task “{title}” (Job #{job_id}) on JobLink. I’m interested—can we chat details?"
-    )
-
-    flash("You’ve accepted this job. Opening WhatsApp…", "success")
-    return redirect(whatsapp)
+    flash("You have accepted the job!", "success")
+    return redirect(url_for("jobs.view_job", job_id=job_id))
 
 @bp.route("/my-jobs")
 def my_jobs():
