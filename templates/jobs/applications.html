@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Applications — {{ job.title }}</h2>
+<ul>
+  {% for a in applications %}
+    <li class="card" style="padding: .75rem; margin:.5rem 0;">
+      <div>
+        <strong>Worker #{{ a.worker_id }}</strong>
+        <span> | Status: {{ a.status }}</span>
+      </div>
+      {% if a.proposal %}
+        <div><em>{{ a.proposal }}</em></div>
+      {% endif %}
+      <div>
+        {% if a.bid_cents %}Bid: G${{ a.bid_cents }}{% endif %}
+        {% if a.days_to_complete %} | ETA: {{ a.days_to_complete }} day(s){% endif %}
+      </div>
+      {% if a.status == 'pending' and job.status == 'open' %}
+        <form method="post" action="{{ url_for('jobs.accept_application', job_id=job.id, app_id=a.id) }}" style="display:inline">
+          <button class="btn btn-success">Accept</button>
+        </form>
+        <form method="post" action="{{ url_for('jobs.decline_application', job_id=job.id, app_id=a.id) }}" style="display:inline">
+          <button class="btn">Decline</button>
+        </form>
+      {% endif %}
+    </li>
+  {% endfor %}
+</ul>
+{% endblock %}

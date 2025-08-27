@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/job_detail.css') }}">
+<style>
+  /* Small page-specific sugar so it looks good without the modal */
+  .apply-page { max-width: 920px; margin: 12px auto; padding: 0 20px; display: grid; gap: 12px; }
+  .apply-header { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: start; }
+  .apply-header .amount { font-weight: 900; font-size: 1.15rem; text-align: right; }
+  .apply-form { padding: 14px; }
+  .apply-form .row { display: flex; gap: .75rem; }
+  .apply-form textarea, .apply-form input { width: 100%; }
+</style>
+{% endblock %}
+
+{% block content %}
+<nav class="crumbs">
+  <a href="{{ url_for('jobs.list_jobs') }}">Jobs</a>
+  <span>/</span>
+  <a href="{{ url_for('jobs.job_detail', job_id=job.id) }}">{{ job.title }}</a>
+  <span>/</span>
+  <span class="crumb-current">Apply</span>
+</nav>
+
+<div class="apply-page">
+  <section class="card apply-form">
+    <header class="apply-header">
+      <div>
+        <h2 style="margin:0 0 6px;">Apply to: {{ job.title }}</h2>
+        <div class="meta-row" style="margin-top:6px;">
+          <span class="meta">
+            <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7m0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z"/></svg>
+            {{ job.location or 'Remote' }}
+          </span>
+          <span class="meta">
+            <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v13a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2m0 15H5V10h14z"/></svg>
+            Posted {{ created_at_display }}
+          </span>
+          {% if job.category %}
+          <span class="meta">
+            <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12,2A10,10 0 1,0 22,12A10,10 0 0,0 12,2Z" /></svg>
+            {{ job.category }}
+          </span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="amount">{{ budget_display }}</div>
+    </header>
+
+    <p class="prose" style="margin:10px 0 12px;">{{ job.description }}</p>
+
+    <form method="post" action="{{ url_for('jobs.apply_to_job', job_id=job.id) }}">
+      <label for="proposal" class="sr-only">Proposal (optional)</label>
+      <textarea id="proposal" name="proposal" rows="5" placeholder="Optional: write a short proposal"></textarea>
+
+      <div class="row" style="margin-top:.65rem;">
+        <div style="flex:1;">
+          <label for="bid_cents" class="sr-only">Bid (G$)</label>
+          <input id="bid_cents" name="bid_cents" type="number" min="0" placeholder="Bid (G$ cents)">
+        </div>
+        <div style="flex:1;">
+          <label for="days_to_complete" class="sr-only">Days</label>
+          <input id="days_to_complete" name="days_to_complete" type="number" min="1" placeholder="Days to complete">
+        </div>
+      </div>
+
+      <div style="display:flex; gap:.5rem; margin-top:1rem;">
+        <button class="btn primary" type="submit">Submit application</button>
+        <a class="btn ghost" href="{{ url_for('jobs.job_detail', job_id=job.id) }}">Cancel</a>
+      </div>
+    </form>
+  </section>
+</div>
+{% endblock %}

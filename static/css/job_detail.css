@@ -314,3 +314,15 @@
     grid-template-columns: 1fr;
   }
 }
+
+
+/* --- Minimal modal CSS --- */
+.jl-modal { position: fixed; inset: 0; display: none; z-index: 1000; }
+.jl-modal.is-open { display: block; }
+.jl-modal__backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.45); backdrop-filter: blur(2px); }
+.jl-modal__sheet {
+  position: relative; margin: 8vh auto 0; width: min(92vw, 520px);
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--line); border-radius: var(--radius-md, 12px);
+  box-shadow: var(--shadow); padding: 16px;
+}

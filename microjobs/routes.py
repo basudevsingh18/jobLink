@@ -127,6 +127,15 @@ def worker_required(f):
         return f(*args, **kwargs)
     return decorated
 
+def _pgrst():
+    base = os.environ.get("POSTGREST_URL", "http://localhost:3000")
+    token = os.environ.get("PGRST_SERVICE_TOKEN", "")
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+    }
+    return base, headers
+
 # --------------------------------------------------------------------------------------
 # Routes
 # --------------------------------------------------------------------------------------
@@ -241,8 +250,7 @@ def post_job():
 @bp.route("/job/<int:job_id>")
 def job_detail(job_id: int):
     """
-    Show job detail + WhatsApp deep link.
-    Also fetch a few related jobs (same category) if available.
+    Show job detail + WhatsApp deep link + Apply modal.
     """
     try:
         job = api.get_job_api(job_id)
@@ -254,40 +262,51 @@ def job_detail(job_id: int):
         flash("Job not found.", "danger")
         return redirect(url_for("jobs.list_jobs"))
 
-    # Precompute display fields
+    # Display helpers
     title = (job.get("title") or "").strip()
     contact_norm = normalize_phone(job.get("contact", ""))
     whatsapp = wa_link(contact_norm, f"Hi, I saw your task '{title}' on JobLink. I'm interested. Is it still available?") if contact_norm else None
+
     budget = job.get("budget")
     budget_display = f"G${budget:,}" if isinstance(budget, int) else (budget or "")
     created_at_display = friendly_datetime(job.get("created_at"))
 
-    # Related jobs (best-effort; ignore errors)
+    # Related (best effort)
     related = []
     try:
         cat = (job.get("category") or "").strip()
         if cat:
-            related = api.list_jobs_api(params={
-                "select": "id,title,location,budget,created_at",
-                "category": f"eq.{cat}",
-                "id": f"neq.{job_id}",
-                "order": "created_at.desc,id.desc",
-                "limit": 5,
-            })
+            # adjust to your api.list_jobs_api signature if needed
+            rows, _total = api.list_jobs_api(
+                q="",
+                page=1,
+                page_size=5,
+                select="id,title,location,budget,created_at",
+                order="created_at.desc,id.desc",
+                filters={"category": f"eq.{cat}", "id": f"neq.{job_id}"}
+            )
+            related = rows
     except Exception:
         related = []
 
-    # Keep accept URL (will log to DB later when accepted_jobs is ready)
+    # ✅ Flags for template
+    is_worker = (session.get("role") or "").lower() == "worker"
+    is_open   = (job.get("status") or "").lower() == "open"
+    logged_in = bool(session.get("user_id") or session.get("uid"))
+
     accept_url = url_for("jobs.accept_job", job_id=job_id)
 
     return render_template(
         "job_detail.html",
         job=job,
-        whatsapp=whatsapp,                # None → template can hide the button
+        whatsapp=whatsapp,
         accept_url=accept_url,
         budget_display=budget_display,
         created_at_display=created_at_display,
         related_jobs=related,
+        is_worker=is_worker,
+        is_open=is_open,
+        logged_in=logged_in,
     )
 
 @bp.post("/jobs/<int:job_id>/accept")
@@ -341,6 +360,201 @@ def accept_job(job_id: int):
         flash(f"Server error while accepting job (HTTP {r.status_code}).", "danger")
 
     return redirect(url_for("jobs.job_detail", job_id=job_id))
+
+@bp.post("/jobs/<int:job_id>/apply", endpoint="apply_to_job")
+def apply_to_job(job_id: int):
+    user_id = session.get("user_id")
+    role = session.get("role")
+    if not user_id or role != "worker":
+        flash("Please log in as a worker to apply.", "warning")
+        return redirect(url_for("auth.login", next=request.path))
+
+    base, headers = _pgrst()
+
+    # modal fields (all optional except job_id/worker_id)
+    proposal = request.form.get("proposal") or None
+    bid_cents = request.form.get("bid_cents") or None
+    days = request.form.get("days_to_complete") or None
+
+    payload = {
+        "job_id": job_id,
+        "worker_id": user_id,  # INTEGER — matches your schema
+        "proposal": proposal,
+        "bid_cents": int(bid_cents) if bid_cents else None,
+        "days_to_complete": int(days) if days else None,
+        # status defaults to 'pending' in DB
+    }
+
+    try:
+        r = requests.post(f"{base}/job_applications",
+                          headers={**headers, "Prefer":"return=representation"},
+                          json=payload, timeout=5)
+    except requests.RequestException:
+        current_app.logger.exception("POST /job_applications failed")
+        flash("Could not submit application (network).", "danger")
+        return redirect(url_for("jobs.job_detail", job_id=job_id))
+
+    if r.status_code in (200, 201):
+        flash("Application submitted!", "success")
+    elif r.status_code == 409:
+        flash("You already applied for this job.", "info")
+    else:
+        msg = None
+        try:
+            msg = r.json().get("message") or r.json().get("hint")
+        except Exception:
+            pass
+        flash(msg or f"Could not submit application (HTTP {r.status_code}).", "danger")
+
+    return redirect(url_for("jobs.job_detail", job_id=job_id))
+
+@bp.get("/jobs/<int:job_id>/applications", endpoint="list_applications")
+def list_applications(job_id: int):
+    # TODO: authorize that the current user owns this job or is admin
+    # owner_id = session.get("user_id")
+
+    base, headers = _pgrst()
+    # Get the job (so you can show title/owner) and the applications
+    job_r = requests.get(f"{base}/jobs?id=eq.{job_id}", headers=headers, timeout=5)
+    job = job_r.json()[0] if job_r.status_code == 200 and job_r.json() else None
+
+    apps_r = requests.get(
+        f"{base}/job_applications?job_id=eq.{job_id}&order=created_at.asc",
+        headers=headers, timeout=5
+    )
+    applications = apps_r.json() if apps_r.status_code == 200 else []
+
+    return render_template("jobs/applications.html", job=job, applications=applications)
+
+@bp.post("/jobs/<int:job_id>/applications/<int:app_id>/accept", endpoint="accept_application")
+def accept_application(job_id: int, app_id: int):
+    # TODO: authorize the current user owns this job (customer)
+    base, headers = _pgrst()
+
+    try:
+        r = requests.patch(
+            f"{base}/job_applications?id=eq.{app_id}&job_id=eq.{job_id}",
+            headers=headers,
+            json={"status": "accepted"},
+            timeout=5
+        )
+    except requests.RequestException:
+        current_app.logger.exception("PATCH /job_applications accept failed")
+        flash("Could not accept application (network).", "danger")
+        return redirect(url_for("jobs.list_applications", job_id=job_id))
+
+    if r.status_code in (200, 204):
+        flash("Application accepted. Others auto-declined.", "success")
+    else:
+        msg = None
+        try:
+            msg = r.json().get("message") or r.json().get("hint")
+        except Exception:
+            pass
+        flash(msg or f"Could not accept application (HTTP {r.status_code}).", "danger")
+
+    return redirect(url_for("jobs.list_applications", job_id=job_id))
+
+@bp.post("/jobs/<int:job_id>/applications/<int:app_id>/decline", endpoint="decline_application")
+def decline_application(job_id: int, app_id: int):
+    # TODO: authorize customer
+    base, headers = _pgrst()
+    try:
+        r = requests.patch(
+            f"{base}/job_applications?id=eq.{app_id}&job_id=eq.{job_id}",
+            headers=headers,
+            json={"status": "declined"},
+            timeout=5
+        )
+    except requests.RequestException:
+        current_app.logger.exception("PATCH /job_applications decline failed")
+        flash("Could not decline application (network).", "danger")
+        return redirect(url_for("jobs.list_applications", job_id=job_id))
+
+    if r.status_code in (200, 204):
+        flash("Application declined.", "info")
+    else:
+        msg = None
+        try:
+            msg = r.json().get("message") or r.json().get("hint")
+        except Exception:
+            pass
+        flash(msg or f"Could not decline application (HTTP {r.status_code}).", "danger")
+
+    return redirect(url_for("jobs.list_applications", job_id=job_id))
+
+@bp.post("/jobs/<int:job_id>/applications/<int:app_id>/withdraw", endpoint="withdraw_application")
+def withdraw_application(job_id: int, app_id: int):
+    user_id = session.get("user_id")
+    role = session.get("role")
+    if not user_id or role != "worker":
+        flash("Please log in as a worker.", "warning")
+        return redirect(url_for("auth.login", next=request.path))
+
+    base, headers = _pgrst()
+    # Ensure it's their application (enforce via PostgREST RLS or by fetching first)
+    try:
+        r = requests.patch(
+            f"{base}/job_applications?id=eq.{app_id}&job_id=eq.{job_id}&worker_id=eq.{user_id}",
+            headers=headers,
+            json={"status": "withdrawn"},
+            timeout=5
+        )
+    except requests.RequestException:
+        current_app.logger.exception("PATCH /job_applications withdraw failed")
+        flash("Could not withdraw application (network).", "danger")
+        return redirect(url_for("jobs.job_detail", job_id=job_id))
+
+    if r.status_code in (200, 204):
+        flash("Application withdrawn.", "info")
+    else:
+        msg = None
+        try:
+            msg = r.json().get("message") or r.json().get("hint")
+        except Exception:
+            pass
+        flash(msg or f"Could not withdraw application (HTTP {r.status_code}).", "danger")
+
+    return redirect(url_for("jobs.job_detail", job_id=job_id))
+
+@bp.get("/jobs/<int:job_id>/apply", endpoint="apply_form")
+def apply_form(job_id: int):
+    # Must be a logged-in worker
+    user_id = session.get("user_id")
+    role = (session.get("role") or "").lower()
+
+    if not user_id or role != "worker":
+        flash("Please log in as a worker to apply.", "warning")
+        return redirect(url_for("auth.login", next=request.path))
+
+    # Load job to display on the page
+    try:
+        job = api.get_job_api(job_id)
+        if not job:
+            flash("Job not found.", "danger")
+            return redirect(url_for("jobs.list_jobs"))
+    except Exception as e:
+        flash(f"Error loading job: {e}", "danger")
+        return redirect(url_for("jobs.list_jobs"))
+
+    # Must be open
+    if (job.get("status") or "").lower() != "open":
+        flash("This job is not open for applications.", "warning")
+        return redirect(url_for("jobs.job_detail", job_id=job_id))
+
+    # Nice display bits
+    budget = job.get("budget")
+    budget_display = f"G${budget:,}" if isinstance(budget, int) else (budget or "")
+    created_at_display = friendly_datetime(job.get("created_at"))
+
+    return render_template(
+        "jobs/apply.html",
+        job=job,
+        budget_display=budget_display,
+        created_at_display=created_at_display,
+    )
+
+
 
 @bp.route("/my-jobs")
 def my_jobs():
