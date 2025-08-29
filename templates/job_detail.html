@@ -79,7 +79,7 @@
   </section>
 
   <!-- Hidden inline form (fallback submit if needed) -->
-  <form id="applyInlineForm" method="post" action="{{ url_for('jobs.apply_to_job', job_id=job.id) }}" style="display:none;">
+  <form id="applyInlineForm" method="post" action="{{ url_for('applications.apply_to_job', job_id=job.id) }}" style="display:none;">
     <input type="hidden" name="proposal" value="">
     <input type="hidden" name="bid_cents" value="">
     <input type="hidden" name="days_to_complete" value="">
@@ -111,10 +111,10 @@
 {% set is_worker = (session.role or '')|lower == 'worker' %}
 {% set is_open   = (job.status or '')|lower == 'open' %}
 {% if is_worker and is_open %}
-  <a class="btn block" href="{{ url_for('jobs.apply_form', job_id=job.id) }}">I'm Interested (Apply)</a>
-  <small class="text-muted">Submitting a proposal is optional.</small>
-{% else %}
-  <small class="text-muted">Status: {{ job.status or 'unknown' }}</small>
+  <a class="btn block" href="{{ url_for('applications.apply_form', job_id=job.id) }}">I'm Interested</a>
+  <!-- <small class="text-muted">Submitting a proposal is optional.</small> -->
+ {% else %}
+  <!-- <small class="text-muted">Status: {{ job.status or 'unknown' }}</small>  -->
 {% endif %}
   </aside>
 </article>

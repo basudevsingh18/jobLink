@@ -1,6 +1,7 @@
 # app.py
 import os
 from flask import Flask
+from microjobs.applications import bp as applications_bp
 from microjobs.routes import bp as jobs_bp
 from microjobs.auth import bp as auth_bp
 from microjobs.accounts import bp as account_bp
@@ -29,6 +30,7 @@ def create_app():
     app.register_blueprint(auth_bp)
     app.register_blueprint(account_bp)
     app.register_blueprint(pages_bp)
+    app.register_blueprint(applications_bp)
 
     return app
 

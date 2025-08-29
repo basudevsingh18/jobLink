@@ -49,14 +49,14 @@
 
     <p class="prose" style="margin:10px 0 12px;">{{ job.description }}</p>
 
-    <form method="post" action="{{ url_for('jobs.apply_to_job', job_id=job.id) }}">
+    <form method="post" action="{{ url_for('applications.apply_to_job', job_id=job.id) }}">
       <label for="proposal" class="sr-only">Proposal (optional)</label>
       <textarea id="proposal" name="proposal" rows="5" placeholder="Optional: write a short proposal"></textarea>
 
       <div class="row" style="margin-top:.65rem;">
         <div style="flex:1;">
-          <label for="bid_cents" class="sr-only">Bid (G$)</label>
-          <input id="bid_cents" name="bid_cents" type="number" min="0" placeholder="Bid (G$ cents)">
+          <label for="bid_cents" class="sr-only">Bid (GYD $)</label>
+          <input id="bid_cents" name="bid_cents" type="number" min="0" placeholder="Bid (GYD $ cents)">
         </div>
         <div style="flex:1;">
           <label for="days_to_complete" class="sr-only">Days</label>

@@ -10,135 +10,232 @@
       <h1>Hi, {{ user.name }}</h1>
       <p class="muted">{{ user.email }}</p>
     </div>
-<nav class="tabs">
-  {% if session.get('role','').lower() == 'worker' %}
-    <a class="tab {{ 'active' if tab=='accepted' else '' }}"
-       href="{{ url_for('account.me', tab='accepted') }}">
-       Accepted Jobs
-    </a>
-  {% endif %}
-  <a class="tab {{ 'active' if tab=='jobs' else '' }}"
-     href="{{ url_for('account.me', tab='jobs') }}">
-     My Jobs
-  </a>
-  <a class="tab {{ 'active' if tab=='settings' else '' }}"
-     href="{{ url_for('account.me', tab='settings') }}">
-     Settings
-  </a>
-</nav>
-
+    <nav class="tabs">
+      {% if session.get('role','').lower() == 'worker' %}
+      <a class="tab {{ 'active' if tab=='accepted' else '' }}"
+        href="{{ url_for('account.me', tab='accepted') }}">Accepted Jobs</a>
+      <a class="tab {{ 'active' if tab=='applications' else '' }}"
+        href="{{ url_for('account.me', tab='applications') }}">Applications</a>
+      {% endif %}
+      <a class="tab {{ 'active' if tab=='jobs' else '' }}" href="{{ url_for('account.me', tab='jobs') }}">My Jobs</a>
+      <a class="tab {{ 'active' if tab=='settings' else '' }}"
+        href="{{ url_for('account.me', tab='settings') }}">Settings</a>
+    </nav>
   </header>
 
-
-
-
-{% if tab in ('accepted','jobs') %}
-<section class="card">
-  <div class="card-head">
-    <h2>{{ heading }}</h2>
-    {% if tab == 'jobs' and session.get('role') == 'customer' %}
+  {% if tab in ('accepted','jobs','applications') %}
+  <section class="card">
+    <div class="card-head">
+      <h2>{{ heading }}</h2>
+      {% if tab == 'jobs' and session.get('role','').lower() == 'customer' %}
       <a class="btn primary" href="{{ url_for('jobs.post_job') }}">Post a Job</a>
-    {% endif %}
-  </div>
+      {% endif %}
+    </div>
 
-  {% if tab == 'accepted' %}
+    {% if tab == 'accepted' %}
     {% if jobs %}
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Title</th><th>Category</th><th>Location</th>
-            <th>Budget</th><th>Status</th><th>Accepted</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for row in jobs %}
-            {# row = accepted_jobs record; row.job is the embedded job #}
-            <tr>
-              <td><a href="{{ url_for('jobs.job_detail', job_id=row.job.id) }}">{{ row.job.title }}</a></td>
-              <td>{{ row.job.category or '—' }}</td>
-              <td>{{ row.job.location or '—' }}</td>
-              <td>{% if row.job.budget is not none %}GYD {{ row.job.budget }}{% else %}—{% endif %}</td>
-              <td>{{ row.job.status or 'assigned' }}</td>
-              <td>{{ (row.accepted_at|string)[:16] }}</td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Category</th>
+          <th>Location</th>
+          <th>Budget</th>
+          <th>Status</th>
+          <th>Accepted</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in jobs %}
+        <tr>
+          <td><a href="{{ url_for('jobs.job_detail', job_id=row.job.id) }}">{{ row.job.title }}</a></td>
+          <td>{{ row.job.category or '—' }}</td>
+          <td>{{ row.job.location or '—' }}</td>
+          <td>{% if row.job.budget is not none %}GYD {{ row.job.budget }}{% else %}—{% endif %}</td>
+          <td>{{ row.job.status or 'assigned' }}</td>
+          <td>{{ (row.accepted_at|string)[:16] }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
     {% else %}
-      <p class="muted">You haven’t accepted any jobs yet.</p>
+    <p class="muted">You haven’t accepted any jobs yet.</p>
     {% endif %}
-  {% else %}
-    {# tab == 'jobs' (your original table for posted/owned jobs) #}
-    {% if jobs %}
-      <table class="table">
-        <thead>
-          <tr><th>Title</th><th>Category</th><th>Location</th><th>Budget</th><th>Status</th><th>Created</th></tr>
-        </thead>
-        <tbody>
-          {% for j in jobs %}
-            <tr>
-              <td><a href="{{ url_for('jobs.job_detail', job_id=j.id) }}">{{ j.title }}</a></td>
-              <td>{{ j.category }}</td>
-              <td>{{ j.location }}</td>
-              <td>{% if j.budget is not none %}GYD {{ j.budget }}{% endif %}</td>
-              <td>{{ j.status or 'open' }}</td>
-              <td>{{ (j.created_at|string)[:16] }}</td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    {% else %}
-      <p class="muted">You haven’t posted any jobs yet.</p>
-    {% endif %}
-  {% endif %}
 
-  {# Pager (works for both tabs) #}
-  {% if total and total > 0 %}
-  <div class="pager">
-    {% set prev = page-1 %}{% set next = page+1 %}
-    {% if page > 1 %}
+    {% elif tab == 'jobs' %}
+    {% if jobs %}
+    {% for j in jobs %}
+    <div class="job-row">
+      <div class="flex-between">
+        <div class="job-summary">
+          <a class="job-title" href="{{ url_for('jobs.job_detail', job_id=j.id) }}">
+            <strong>{{ j.title }}</strong>
+          </a>
+          <div class="muted job-line">
+            {{ j.category }} · {{ j.location }} ·
+            {% if j.budget is not none %}GYD {{ j.budget }}{% else %}—{% endif %}
+          </div>
+          <div class="muted job-line">
+            Status: {{ j.status or 'open' }} · Created: {{ (j.created_at|string)[:16] }}
+          </div>
+        </div>
+        <!-- <div>
+          <a class="btn" href="{{ url_for('jobs.job_detail', job_id=j.id) }}">View</a>
+        </div> -->
+      </div>
+
+      {# --- Collapsible Applications list for this job --- #}
+
+
+      {% set apps = j.applications | default([], true) %}
+      <details class="app-details" {% if apps|length %}open{% endif %}>
+        <summary>Applications ({{ apps|length }})</summary>
+
+        {% if apps|length %}
+        <div class="app-cards">
+          {% for app in apps %}
+          <article class="app-card">
+            <header class="app-card-head">
+              <div class="app-card-line">
+                <strong class="worker-name">{{ app.worker.name or 'Worker' }}</strong>
+                <span class="dot">•</span>
+                <span class="bid">
+                  {% if app.bid_cents is not none %}$ {{ (app.bid_cents // 100) }}{% else %}—{% endif %}
+                </span>
+                <span class="dot">•</span>
+                <span class="days">{{ app.days_to_complete or '—' }} days</span>
+                <span class="dot">•</span>
+                <span class="status-pill status-{{ (app.status or 'pending')|lower }}">
+                  {{ app.status or 'pending' }}
+                </span>
+              </div>
+            </header>
+
+            <p class="proposal">{{ app.proposal or '—' }}</p>
+
+
+
+            <div class="app-actions">
+              {% if app.status in ['pending','declined'] and j.status in ['open','offered'] %}
+
+              <form class="inline" method="post"
+                action="{{ url_for('applications.offer_application', job_id=j.id, app_id=app.id) }}">
+                <button class="btn small primary" type="submit">Offer</button>
+              </form>
+
+              {% endif %}
+              {% if app.status in ['pending','offered'] %}
+
+              <form class="inline" method="post"
+                action="{{ url_for('applications.reject_application_by_customer', job_id=j.id, app_id=app.id) }}">
+                <button class="btn small" type="submit">Reject</button>
+              </form>
+
+              {% endif %}
+            </div>
+
+
+
+
+          </article>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="muted mt-2">No applications yet.</p>
+        {% endif %}
+      </details>
+
+
+
+      <hr class="soft">
+    </div>
+    {% endfor %}
+    {% else %}
+    <p class="muted">You haven’t posted any jobs yet.</p>
+    {% endif %}
+
+    {% elif tab == 'applications' %}
+    {% if jobs %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Job</th>
+          <th>Proposal</th>
+          <th>Bid</th>
+          <th>Days</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for app in jobs %}
+        <tr>
+          <td><a href="{{ url_for('jobs.job_detail', job_id=app.job.id) }}">{{ app.job.title }}</a>
+            <div class="muted">{{ app.job.location }} · {{ app.job.category }}</div>
+          </td>
+          <td class="truncate">{{ app.proposal or '—' }}</td>
+          <td>{% if app.bid_cents is not none %} $ {{ (app.bid_cents) }}{% else %}—{% endif %}</td>
+          <td>{{ app.days_to_complete or '—' }}</td>
+          <td>{{ app.status or 'pending' }}</td>
+          <td class="actions-cell text-actions">
+            {% if app.status == 'offered' and app.job.status in ['offered','open'] %}
+            <form class="inline" method="post"
+              action="{{ url_for('applications.worker_accept_offer', job_id=app.job.id, app_id=app.id) }}">
+              <button class="btn small" type="submit">Accept offer</button>
+            </form>
+            <form class="inline" method="post"
+              action="{{ url_for('applications.worker_reject_offer', job_id=app.job.id, app_id=app.id) }}">
+              <button class="btn small" type="submit">Reject offer</button>
+            </form>
+            {% else %}
+            <span class="muted">—</span>
+            {% endif %}
+          </td>
+
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="muted">You haven’t applied for any jobs yet.</p>
+    {% endif %}
+    {% endif %}
+
+    {# Pager for all three views #}
+    {% if total and total > 0 %}
+    <div class="pager">
+      {% set prev = page-1 %}{% set next = page+1 %}
+      {% if page > 1 %}
       <a class="seed-link" href="{{ url_for('account.me', tab=tab, page=prev) }}">← Prev</a>
+      {% endif %}
+      {% if (page*20) < total %} <a class="seed-link" href="{{ url_for('account.me', tab=tab, page=next) }}">Next →</a>
+        {% endif %}
+        <span class="muted">Page {{ page }}{% if total %} · {{ total }} total{% endif %}</span>
+    </div>
     {% endif %}
-    {% if (page*20) < total %}
-      <a class="seed-link" href="{{ url_for('account.me', tab=tab, page=next) }}">Next →</a>
-    {% endif %}
-    <span class="muted">Page {{ page }}{% if total %} · {{ total }} total{% endif %}</span>
-  </div>
+  </section>
   {% endif %}
-</section>
-{% endif %}
-
-
-
 
   {% if tab == 'settings' %}
   <section class="grid-2">
     <form class="card" method="post" action="{{ url_for('account.update_profile') }}">
       <h2>Profile</h2>
-      <label>
-        <span>Name</span>
-        <input class="input" type="text" name="name" value="{{ user.name or '' }}" required>
-      </label>
-      <label>
-        <span>Contact</span>
-        <input class="input" type="text" name="contact" value="{{ user.contact or '' }}">
-      </label>
-      <label>
-        <span>Location</span>
-        <input class="input" type="text" name="location" value="{{ user.location or '' }}">
-      </label>
-      <div class="actions">
-        <button class="btn primary" type="submit">Save changes</button>
-      </div>
+      <label><span>Name</span><input class="input" type="text" name="name" value="{{ user.name or '' }}"
+          required></label>
+      <label><span>Contact</span><input class="input" type="text" name="contact"
+          value="{{ user.contact or '' }}"></label>
+      <label><span>Location</span><input class="input" type="text" name="location"
+          value="{{ user.location or '' }}"></label>
+      <div class="actions"><button class="btn primary" type="submit">Save changes</button></div>
     </form>
 
     <form class="card" method="post" action="{{ url_for('account.change_password') }}">
       <h2>Password</h2>
-      <label><span>New password</span><input class="input" type="password" name="password" minlength="8" required></label>
-      <label><span>Confirm password</span><input class="input" type="password" name="password2" minlength="8" required></label>
-      <div class="actions">
-        <button class="btn" type="submit">Change password</button>
-      </div>
+      <label><span>New password</span><input class="input" type="password" name="password" minlength="8"
+          required></label>
+      <label><span>Confirm password</span><input class="input" type="password" name="password2" minlength="8"
+          required></label>
+      <div class="actions"><button class="btn" type="submit">Change password</button></div>
     </form>
   </section>
   {% endif %}

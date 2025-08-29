@@ -1,29 +1,47 @@
 {% extends 'base.html' %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}">
+{% endblock %}
+
 {% block content %}
-<h2>Applications — {{ job.title }}</h2>
-<ul>
-  {% for a in applications %}
-    <li class="card" style="padding: .75rem; margin:.5rem 0;">
-      <div>
-        <strong>Worker #{{ a.worker_id }}</strong>
-        <span> | Status: {{ a.status }}</span>
-      </div>
-      {% if a.proposal %}
-        <div><em>{{ a.proposal }}</em></div>
-      {% endif %}
-      <div>
-        {% if a.bid_cents %}Bid: G${{ a.bid_cents }}{% endif %}
-        {% if a.days_to_complete %} | ETA: {{ a.days_to_complete }} day(s){% endif %}
-      </div>
-      {% if a.status == 'pending' and job.status == 'open' %}
-        <form method="post" action="{{ url_for('jobs.accept_application', job_id=job.id, app_id=a.id) }}" style="display:inline">
-          <button class="btn btn-success">Accept</button>
-        </form>
-        <form method="post" action="{{ url_for('jobs.decline_application', job_id=job.id, app_id=a.id) }}" style="display:inline">
-          <button class="btn">Decline</button>
-        </form>
-      {% endif %}
-    </li>
-  {% endfor %}
-</ul>
+<section class="card">
+  <div class="card-head">
+    <h2>My Applications</h2>
+  </div>
+
+  {% if jobs %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Job</th>
+          <th>Proposal</th>
+          <th>Bid</th>
+          <th>Days</th>
+          <th>Status</th>
+          <th>Applied</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for app in jobs %}
+          <tr>
+            <td><a href="{{ url_for('jobs.job_detail', job_id=app.job.id) }}">{{ app.job.title }}</a></td>
+            <td>{{ app.proposal or '—' }}</td>
+            <td>
+              {% if app.bid_cents %}
+                $ {{ (app.bid_cents // 100) }}
+              {% else %}
+                —
+              {% endif %}
+            </td>
+            <td>{{ app.days_to_complete or '—' }}</td>
+            <td>{{ app.status or 'pending' }}</td>
+            <td>{{ (app.created_at|string)[:16] }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="muted">You haven’t applied for any jobs yet.</p>
+  {% endif %}
+</section>
 {% endblock %}

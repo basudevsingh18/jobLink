@@ -343,7 +343,7 @@ body {
 
 .card:hover {
   transform: translateY(-2px);
-  background: var(--glass-strong);
+  /* background: var(--glass-strong); */
 }
 
 a {

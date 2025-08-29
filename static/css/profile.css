@@ -190,3 +190,284 @@
     align-items: flex-start;
   }
 }
+
+
+
+
+
+
+
+
+
+
+/* base: make action buttons look like colored text links */
+.app-card .app-actions {
+  position: static;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+}
+.app-card .app-actions form { margin: 0; }
+.app-card .app-actions .btn {
+  background: none !important;
+  border: 0 !important;
+  padding: 0;
+  color: inherit;
+  font-weight: 600;
+  line-height: 1.2;
+  text-decoration: none;
+  text-underline-offset: 2px;
+}
+
+/* palette (tweak to taste) */
+:root {
+  --act-offer:   #2563eb; /* blue */
+  --act-accept:  #16a34a; /* green */
+  --act-reject:  #b42318; /* red */
+  --act-withdraw:#6b7280; /* gray */
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --act-offer:   #60a5fa;
+    --act-accept:  #34d399;
+    --act-reject:  #f87171;
+    --act-withdraw:#9ca3af;
+  }
+}
+
+/* map colors to actions WITHOUT touching HTML */
+.app-card .app-actions form[action*="/offer_application"] .btn { color: var(--act-offer); }          /* customer → Offer */
+.app-card .app-actions form[action$="/accept-offer"] .btn     { color: var(--act-accept); }         /* worker → Accept Offer */
+.app-card .app-actions form[action$="/reject-offer"] .btn,
+.app-card .app-actions form[action*="/reject_application_by_customer"] .btn { color: var(--act-reject); } /* Reject */
+.app-card .app-actions form[action$="/withdraw"] .btn         { color: var(--act-withdraw); }       /* optional */
+
+.app-card .app-actions .btn:hover,
+.app-card .app-actions .btn:focus-visible {
+  text-decoration: underline;
+  opacity: .9;
+  outline: none;
+}
+
+/* optional subtle separator dot between actions (not a box) */
+.app-card .app-actions form + form::before {
+  content: "·";
+  opacity: .45;
+  margin: 0 2px 0 0;
+}
+
+/* mobile: left-align and allow wrap */
+@media (max-width: 640px) {
+  .app-card .app-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+  .app-card .app-actions form + form::before { display: none; }
+}
+
+
+
+
+
+
+
+
+
+
+
+/* --- Spacing utilities (optional) --- */
+.mt-3 {
+  margin-top: 1rem !important;
+}
+
+.mb-3 {
+  margin-bottom: 1rem !important;
+}
+
+/* --- Job summary spacing --- */
+.job-summary {
+  display: grid;
+  row-gap: 6px;
+  /* space between title / lines */
+  margin: 6px 0 14px;
+  /* more air below the block */
+}
+
+.job-title {
+  display: inline-block;
+  margin-bottom: 2px;
+  line-height: 1.25;
+  font-size: 1.075rem;
+}
+
+.job-line {
+  line-height: 1.4;
+}
+
+/* --- Applications <details> spacing --- */
+.app-details {
+  margin-top: 16px;
+}
+
+.app-details>summary {
+  padding: 8px 0;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* --- Cards layout & spacing --- */
+.app-cards {
+  display: grid;
+  gap: 14px;
+}
+
+.app-card {
+  border: 1px solid rgba(0, 0, 0, .08);
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: #fff;
+}
+
+@media (prefers-color-scheme: dark) {
+  .app-card {
+    background: #111;
+    border-color: rgba(255, 255, 255, .12);
+  }
+}
+
+.app-card-head {
+  margin-bottom: 8px;
+}
+
+.app-card-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-card-line .dot {
+  opacity: .45;
+}
+
+.status-pill {
+  font-size: 12px;
+  line-height: 1;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, .1);
+}
+
+.status-pending {
+  background: #fff9e6;
+  border-color: #f0d58a;
+}
+
+.status-offered {
+  background: #eaf3ff;
+  border-color: #9ec5ff;
+}
+
+.status-accepted {
+  background: #e9f8ef;
+  border-color: #9dd8b5;
+}
+
+.status-declined {
+  background: #fde8e8;
+  border-color: #f5a6a6;
+}
+
+.proposal {
+  margin: 8px 0 12px;
+  color: var(--muted, #666);
+}
+
+/* Buttons row spacing */
+.app-actions {
+  display: inline-flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.app-actions form {
+  margin: 0;
+}
+
+/* Mobile: allow wrapping nicely */
+@media (max-width: 640px) {
+  .job-summary {
+    row-gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .app-actions {
+    row-gap: 6px;
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* text-only actions, side-by-side */
+.text-actions { white-space: nowrap; }
+.text-actions form { display: inline; margin: 0; }
+
+.text-actions .btn {
+  background: none !important;
+  border: 0 !important;
+  padding: 0;
+  color: inherit;
+  font-weight: 600;
+  line-height: 1.2;
+  text-decoration: none;
+  text-underline-offset: 2px;
+}
+
+/* colors mapped by action target */
+.text-actions form[action$="/accept-offer"] .btn { color: #16a34a; }  /* green */
+.text-actions form[action$="/reject-offer"] .btn { color: #b42318; }  /* red */
+
+.text-actions .btn:hover,
+.text-actions .btn:focus-visible {
+  text-decoration: underline;
+  opacity: .9;
+  outline: none;
+}
+
+/* subtle separator between the two actions */
+.text-actions form + form::before {
+  content: "·";
+  opacity: .45;
+  margin: 0 6px;
+}
+
+/* mobile: allow wrapping neatly */
+@media (max-width: 640px) {
+  .text-actions { white-space: normal; display: flex; gap: 10px; flex-wrap: wrap; }
+  .text-actions form + form::before { display: none; }
+}
