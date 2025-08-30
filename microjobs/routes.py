@@ -124,7 +124,7 @@ def list_jobs():
             q=q,
             page=page,
             page_size=page_size,
-            select="id,title,description,category,location,budget,created_at,status",
+            select="id,title,description,category,location,budget_cents,created_at,status",
             order="created_at.desc,id.desc",
             filters=filters or None,
         )
@@ -171,11 +171,11 @@ def post_job():
     title = (request.form.get("title") or "").strip()
     description = (request.form.get("description") or "").strip()
     category = (request.form.get("category") or "Other").strip()
-    budget_raw = (request.form.get("budget") or "").strip()
+    budget_cents_raw = (request.form.get("budget_cents") or "").strip()
     location = (request.form.get("location") or "").strip()
     contact_raw = (request.form.get("contact") or "").strip()
 
-    if not all([title, description, budget_raw, location, contact_raw]):
+    if not all([title, description, budget_cents_raw, location, contact_raw]):
         flash("Please fill in all required fields.", "warning")
         return render_template(
             "post_job.html",
@@ -185,11 +185,11 @@ def post_job():
         )
 
     try:
-        budget = int(budget_raw)
-        if budget < 0:
+        budget_cents = int(budget_cents_raw)
+        if budget_cents < 0:
             raise ValueError
     except ValueError:
-        flash("Budget must be a whole number (G$).", "warning")
+        flash("budget_cents must be a whole number (G$).", "warning")
         return render_template(
             "post_job.html",
             categories=CATEGORIES,
@@ -211,7 +211,7 @@ def post_job():
         "title": title,
         "description": description,
         "category": category,
-        "budget": budget,
+        "budget_cents": budget_cents,
         "location": location,
         "contact": contact,
         "status": "open",
@@ -261,8 +261,8 @@ def job_detail(job_id: int):
         else None
     )
 
-    budget = job.get("budget")
-    budget_display = f"G${budget:,}" if isinstance(budget, int) else (budget or "")
+    budget_cents = job.get("budget_cents")
+    budget_cents_display = f"G${budget_cents:,}" if isinstance(budget_cents, int) else (budget_cents or "")
     created_at_display = friendly_datetime(job.get("created_at"))
 
     # Related (best effort)
@@ -274,7 +274,7 @@ def job_detail(job_id: int):
                 q="",
                 page=1,
                 page_size=5,
-                select="id,title,location,budget,created_at",
+                select="id,title,location,budget_cents,created_at",
                 order="created_at.desc,id.desc",
                 filters={"category": f"eq.{cat}", "id": f"neq.{job_id}"},
             )
@@ -296,7 +296,7 @@ def job_detail(job_id: int):
         whatsapp=whatsapp,
         accept_url=accept_url,
         apply_url=apply_url,
-        budget_display=budget_display,
+        budget_cents_display=budget_cents_display,
         created_at_display=created_at_display,
         related_jobs=related,
         is_worker=is_worker,
@@ -369,7 +369,7 @@ def my_jobs():
 
     try:
         rows, total = api.list_jobs_api(
-            select="id,title,description,category,location,budget,contact,created_at,customer_id",
+            select="id,title,description,category,location,budget_cents,contact,created_at,customer_id",
             order="created_at.desc,id.desc",
             page=int(request.args.get("page", 1)),
             page_size=20,
@@ -413,15 +413,15 @@ def all_jobs():
     view = (request.args.get("view") or "grid").strip()  # grid | list
     sort = (
         request.args.get("sort") or "newest"
-    ).strip()  # newest | oldest | budget_hi | budget_lo
+    ).strip()  # newest | oldest | budget_cents_hi | budget_cents_lo
     page = int(request.args.get("page", 1))
     page_sz = int(request.args.get("page_size", 18))
 
     order_map = {
         "newest": "created_at.desc,id.desc",
         "oldest": "created_at.asc,id.asc",
-        "budget_hi": "budget.desc,created_at.desc",
-        "budget_lo": "budget.asc,created_at.desc",
+        "budget_cents_hi": "budget_cents.desc,created_at.desc",
+        "budget_cents_lo": "budget_cents.asc,created_at.desc",
     }
     order = order_map.get(sort, order_map["newest"])
 
@@ -438,7 +438,7 @@ def all_jobs():
         q=q,
         page=page,
         page_size=page_sz,
-        select="id,title,description,category,location,budget,created_at,status",
+        select="id,title,description,category,location,budget_cents,created_at,status",
         order=order,
         filters=filters or None,
     )

@@ -1,7 +1,7 @@
 # microjobs/auth.py
 """
 Ultra-simple auth:
-- Register: name, email, password -> creates user (role defaults to 'customer')
+- Register: name, email, password -> creates user
 - Login: email + password
 - Logout: clears session
 
@@ -30,8 +30,7 @@ def _load_session_user():
         g.current_user = {
             "id": uid,
             "name": session.get("user_name"),
-            "email": session.get("user_email"),
-            "role": session.get("role"),
+            "email": session.get("user_email")
         }
     else:
         g.current_user = None
@@ -54,10 +53,9 @@ def register():
     name = _f("name")
     email = _f("email").lower()
     password = _f("password")
-    role = _f("role")
 
-    if not all([name, email, password, role]):
-        flash("Please fill in name, email, password, and role.", "warning")
+    if not all([name, email, password]):
+        flash("Please fill in name, email, and password.", "warning")
         return render_template("register.html")
 
     # Check duplicate email
@@ -65,12 +63,10 @@ def register():
         flash("That email is already registered.", "danger")
         return render_template("register.html")
 
-    # Create user (role defaulted to 'customer', status 'active')
     user = api.create_user({
         "name": name,
         "email": email,
         "password_hash": generate_password_hash(password),  # pbkdf2:sha256
-        "role": role,
         "status": "active",
     })
 
@@ -101,7 +97,6 @@ def login():
     session["uid"] = user["id"]       # legacy compat (if other code checks this)
     session["user_name"] = user.get("name")
     session["user_email"] = user.get("email")
-    session["role"] = user.get("role") or "customer"
 
     return redirect(url_for("jobs.list_jobs"))
 

@@ -37,5 +37,5 @@ def create_app():
 if __name__ == "__main__":
     app = create_app()  # <-- instantiate your app
     host = os.getenv("HOST", "0.0.0.0")
-    port = int(os.getenv("PORT", "5000"))
+    port = int(os.getenv("PORT", "5001"))
     app.run(host=host, port=port, debug=True)
