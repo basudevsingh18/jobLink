@@ -70,16 +70,19 @@ def current_db_user_id():
 
 @bp.route("/me")
 def me():
-    role = (session.get("role") or "").lower()
-    uid = current_db_user_id() 
+    uid = current_db_user_id()
     if not uid:
         return redirect(url_for("auth.login", next=request.full_path))
 
-    # Default tab: workers → 'accepted', everyone else → 'jobs'
+    # Tab selection: honor query param, default to "jobs"
     requested = (request.args.get("tab") or "").strip().lower()
-    tab = requested or ("accepted" if role == "worker" else "jobs")
+    tab = requested or "jobs"
 
-    page = int(request.args.get("page", 1))
+    # Pagination
+    try:
+        page = int(request.args.get("page", 1))
+    except (TypeError, ValueError):
+        page = 1
     page_size = 20
     offset = (page - 1) * page_size
 
@@ -87,18 +90,14 @@ def me():
     jobs, total = [], 0
 
     # ------------------------
-    # CUSTOMER: My Jobs (+ embedded applications)
+    # CUSTOMER-LIKE: My Jobs (+ embedded applications)
     # ------------------------
     if tab == "jobs":
-        if role != "customer":
-            # Workers don't have "posted jobs"; send them to their default
-            return redirect(url_for("account.me", tab=("accepted" if role == "worker" else "settings")))
-
         heading = "My Jobs (with Applications)"
         h = {**headers, "Prefer": "count=exact"}
 
         try:
-            # Try embedding applications + worker info (requires FKs)
+            # Preferred: embed applications + worker info (requires FK/RI)
             r = requests.get(
                 f"{base}/jobs"
                 f"?customer_id=eq.{uid}"
@@ -112,7 +111,7 @@ def me():
                 jobs = r.json()
                 total = _total_from(r, len(jobs))
             else:
-                # Fallback: fetch jobs then apps separately and stitch by job_id
+                # Fallback: fetch jobs, then apps separately and stitch
                 rj = requests.get(
                     f"{base}/jobs"
                     f"?customer_id=eq.{uid}"
@@ -143,25 +142,21 @@ def me():
             flash(f"Could not load your jobs/applications: {e}", "danger")
 
         return render_template(
-            "profile.html",
+            "auth/profile.html",
             tab=tab, heading=heading,
             jobs=jobs, total=total or (len(jobs) if jobs else 0),
-            page=page, role=role,
+            page=page,
             user={
                 "id": uid,
                 "name": session.get("user_name"),
                 "email": session.get("user_email"),
-                "role": role,
             },
         )
 
     # ------------------------
-    # WORKER: Applications tab (your applications + embedded job)
+    # Applications tab (your applications + embedded job)
     # ------------------------
     if tab == "applications":
-        if role != "worker":
-            return redirect(url_for("account.me", tab="jobs"))
-
         heading = "My Applications"
         h = {**headers, "Prefer": "count=exact"}
 
@@ -181,25 +176,21 @@ def me():
             flash(f"Could not load your applications: {e}", "danger")
 
         return render_template(
-            "profile.html",
+            "auth/profile.html",
             tab=tab, heading=heading,
             jobs=jobs, total=total or (len(jobs) if jobs else 0),
-            page=page, role=role,
+            page=page,
             user={
                 "id": uid,
                 "name": session.get("user_name"),
                 "email": session.get("user_email"),
-                "role": role,
             },
         )
 
     # ------------------------
-    # WORKER: Accepted tab (assigned jobs)
+    # Accepted tab (assigned jobs)
     # ------------------------
     if tab == "accepted":
-        if role != "worker":
-            return redirect(url_for("account.me", tab="jobs"))
-
         heading = "Accepted Jobs"
         h = {**headers, "Prefer": "count=exact"}
 
@@ -233,15 +224,14 @@ def me():
             flash(f"Could not load accepted jobs: {e}", "danger")
 
         return render_template(
-            "profile.html",
+            "auth/profile.html",
             tab=tab, heading=heading,
             jobs=jobs, total=total or (len(jobs) if jobs else 0),
-            page=page, role=role,
+            page=page,
             user={
                 "id": uid,
                 "name": session.get("user_name"),
                 "email": session.get("user_email"),
-                "role": role,
             },
         )
 
@@ -251,19 +241,18 @@ def me():
     if tab == "settings":
         heading = "Settings"
         return render_template(
-            "profile.html",
+            "auth/profile.html",
             tab=tab, heading=heading,
-            jobs=[], total=0, page=page, role=role,
+            jobs=[], total=0, page=page,
             user={
                 "id": uid,
                 "name": session.get("user_name"),
                 "email": session.get("user_email"),
-                "role": role,
             },
         )
 
-    # Fallback to role default
-    return redirect(url_for("account.me", tab=("accepted" if role == "worker" else "jobs")))
+    # Fallback to a neutral default (no role logic)
+    return redirect(url_for("account.me", tab="jobs"))
 
 
 

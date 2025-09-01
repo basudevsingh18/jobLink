@@ -137,7 +137,7 @@ def list_jobs():
     locations = api.list_job_locations()
 
     return render_template(
-        "jobs.html",
+        "jobs/jobs.html",
         jobs=rows,
         total=total or len(rows),
         page=page,
@@ -160,7 +160,7 @@ def post_job():
         if not require_role("customer"):
             return redirect(url_for("auth.login"))
         return render_template(
-            "post_job.html", categories=CATEGORIES, locations=LOCATIONS
+            "jobs/post_job.html", categories=CATEGORIES, locations=LOCATIONS
         )
 
     # POST
@@ -178,7 +178,7 @@ def post_job():
     if not all([title, description, budget_cents_raw, location, contact_raw]):
         flash("Please fill in all required fields.", "warning")
         return render_template(
-            "post_job.html",
+            "jobs/post_job.html",
             categories=CATEGORIES,
             locations=LOCATIONS,
             form=request.form,
@@ -191,7 +191,7 @@ def post_job():
     except ValueError:
         flash("budget_cents must be a whole number (G$).", "warning")
         return render_template(
-            "post_job.html",
+            "jobs/post_job.html",
             categories=CATEGORIES,
             locations=LOCATIONS,
             form=request.form,
@@ -201,7 +201,7 @@ def post_job():
     if not contact:
         flash("Please enter a valid contact number.", "warning")
         return render_template(
-            "post_job.html",
+            "jobs/post_job.html",
             categories=CATEGORIES,
             locations=LOCATIONS,
             form=request.form,
@@ -227,7 +227,7 @@ def post_job():
     except Exception as e:
         flash(f"Failed to post job: {e}", "danger")
         return render_template(
-            "post_job.html",
+            "jobs/post_job.html",
             categories=CATEGORIES,
             locations=LOCATIONS,
             form=request.form,
@@ -291,7 +291,7 @@ def job_detail(job_id: int):
     apply_url = url_for("applications.apply_form", job_id=job_id)  # new blueprint
 
     return render_template(
-        "job_detail.html",
+        "jobs/job_detail.html",
         job=job,
         whatsapp=whatsapp,
         accept_url=accept_url,
@@ -382,7 +382,7 @@ def my_jobs():
         jobs, total = [], 0
 
     return render_template(
-        "jobs.html",
+        "jobs/jobs.html",
         jobs=jobs,
         categories=CATEGORIES,
         locations=LOCATIONS,
@@ -448,7 +448,7 @@ def all_jobs():
     locations = sorted({j.get("location") for j in jobs if j.get("location")})
 
     return render_template(
-        "all_jobs.html",
+        "jobs/all_jobs.html",
         jobs=jobs,
         total=total or 0,
         page=page,

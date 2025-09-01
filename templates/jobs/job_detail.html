@@ -60,10 +60,10 @@
         </div>
       </div>
 
-      <div class="price">
-        <span class="amount">{{ budget_display }}</span>
+      <!-- <div class="price">
+        <span class="amount">{{ budget_cents_display }}</span>
         <span class="label">Budget</span>
-      </div>
+      </div> -->
     </header>
 
     <section class="detail-body">
@@ -87,12 +87,13 @@
 
   <!-- ASIDE / APPLY BOX -->
   <aside class="apply-box card">
-    <div class="apply-price">
-      <div class="amount">{{ budget_display }}</div>
+    <!-- <div class="apply-price">
+      <div class="amount">{{ budget_cents_display }}</div>
       <div class="label">Budget</div>
-    </div>
+    </div> -->
 
     <ul class="apply-meta">
+      <li><span>Budget</span><strong>{{ budget_cents_display }}</strong></li>
       <li><span>Location</span><strong>{{ job.location or 'Remote' }}</strong></li>
       <li><span>Category</span><strong>{{ job.category or 'Other' }}</strong></li>
       <li><span>Posted</span><strong>{{ created_at_display }}</strong></li>
@@ -130,7 +131,7 @@
       </div>
       <div class="rel-meta">
         <span class="loc">{{ r.location or 'Remote' }}</span>
-        <span class="budget">G${{ r.budget }}</span>
+        <span class="budget">G${{ r.budget_cents }}</span>
       </div>
     </a>
     {% endfor %}

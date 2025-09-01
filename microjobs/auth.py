@@ -48,7 +48,7 @@ def _inject_user():
 @bp.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "GET":
-        return render_template("register.html")
+        return render_template("auth/register.html")
 
     name = _f("name")
     email = _f("email").lower()
@@ -56,12 +56,12 @@ def register():
 
     if not all([name, email, password]):
         flash("Please fill in name, email, and password.", "warning")
-        return render_template("register.html")
+        return render_template("auth/register.html")
 
     # Check duplicate email
     if api.get_user_by_email(email):
         flash("That email is already registered.", "danger")
-        return render_template("register.html")
+        return render_template("auth/register.html")
 
     user = api.create_user({
         "name": name,
@@ -77,19 +77,19 @@ def register():
 @bp.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "GET":
-        return render_template("login.html")
+        return render_template("auth/login.html")
 
     email = _f("email").lower()
     password = _f("password")
 
     if not all([email, password]):
         flash("Enter your email and password.", "warning")
-        return render_template("login.html")
+        return render_template("auth/login.html")
 
     user = api.get_user_by_email(email)
     if not user or not check_password_hash(user.get("password_hash") or "", password):
         flash("Invalid email or password.", "danger")
-        return render_template("login.html")
+        return render_template("auth/login.html")
 
     # Minimal session
     session.clear()

@@ -122,14 +122,14 @@ def apply_form(job_id: int):
         flash("This job is not open for applications.", "warning")
         return redirect(url_for("jobs.job_detail", job_id=job_id))
 
-    budget = job.get("budget")
-    budget_display = f"G${budget:,}" if isinstance(budget, int) else (budget or "")
+    budget_cents = job.get("budget_cents")
+    budget_cents_display = f"G${budget_cents:,}" if isinstance(budget_cents, int) else (budget_cents or "")
     created_at_display = friendly_datetime(job.get("created_at"))
 
     return render_template(
         "jobs/apply.html",
         job=job,
-        budget_display=budget_display,
+        budget_cents_display=budget_cents_display,
         created_at_display=created_at_display,
     )
 
