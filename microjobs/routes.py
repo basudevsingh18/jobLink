@@ -153,20 +153,18 @@ def list_jobs():
 @bp.route("/post-job", methods=["GET", "POST"])
 def post_job():
     """
-    Customer-only form → creates a job row via PostgREST.
+    Authenticated form → creates a job row via PostgREST.
     Dev mode: anon write must be allowed, or use JWT later.
     """
+    if not session.get("user_id"):
+        return redirect(url_for("auth.login"))
+
     if request.method == "GET":
-        if not require_role("customer"):
-            return redirect(url_for("auth.login"))
         return render_template(
             "jobs/post_job.html", categories=CATEGORIES, locations=LOCATIONS
         )
 
     # POST
-    if not require_role("customer"):
-        return redirect(url_for("auth.login"))
-
     # Read & validate
     title = (request.form.get("title") or "").strip()
     description = (request.form.get("description") or "").strip()
@@ -215,8 +213,8 @@ def post_job():
         "location": location,
         "contact": contact,
         "status": "open",
-        # When JWT/RLS is enabled, this will be set server-side from JWT claims.
-        "customer_id": session.get("user_id"),
+        # Set from session (RLS/JWT could enforce later)
+        "poster_id": session.get("user_id"),
     }
 
     try:
@@ -290,6 +288,11 @@ def job_detail(job_id: int):
     accept_url = url_for("jobs.accept_job", job_id=job_id)
     apply_url = url_for("applications.apply_form", job_id=job_id)  # new blueprint
 
+    has_applied = False
+    if session.get("user_id"):
+        apps = api.get_applications_for_user(job_id, session["user_id"])
+        has_applied = bool(apps)
+
     return render_template(
         "jobs/job_detail.html",
         job=job,
@@ -302,6 +305,7 @@ def job_detail(job_id: int):
         is_worker=is_worker,
         is_open=is_open,
         logged_in=logged_in,
+        has_applied=has_applied,
     )
 
 

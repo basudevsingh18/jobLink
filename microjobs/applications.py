@@ -39,40 +39,82 @@ def _job_set_status(base, headers, job_id, status):
 
 @bp.post("/jobs/<int:job_id>/apply", endpoint="apply_to_job")
 def apply_to_job(job_id: int):
+    # Must be logged in (role-agnostic)
     user_id = session.get("user_id")
-    role = (session.get("role") or "").lower()
-    if not user_id or role != "worker":
-        flash("Please log in as a worker to apply.", "warning")
+    if not user_id:
+        flash("Please log in to apply.", "warning")
         return redirect(url_for("auth.login", next=request.path))
 
-    base, headers = pgrst_base_and_headers()
+    # Load + validate job
+    try:
+        job = api.get_job_api(job_id)
+        if not job:
+            flash("Job not found.", "danger")
+            return redirect(url_for("jobs.list_jobs"))
+    except Exception as e:
+        current_app.logger.exception("Error fetching job %s: %s", job_id, e)
+        flash("Error loading job details.", "danger")
+        return redirect(url_for("jobs.list_jobs"))
 
-    proposal = request.form.get("proposal") or None
-    bid_cents = request.form.get("bid_cents") or None
-    days     = request.form.get("days_to_complete") or None
+    # Block self-apply
+    if job.get("customer_id") == user_id:
+        flash("You cannot apply to your own job.", "warning")
+        return redirect(url_for("jobs.job_detail", job_id=job_id))
+
+    # Only accept applications for open jobs
+    if (job.get("status") or "").lower() != "open":
+        flash("This job is not open for applications.", "warning")
+        return redirect(url_for("jobs.job_detail", job_id=job_id))
+
+    # Prevent duplicate applications (UI safety net + DB-friendly)
+    try:
+        existing = api.get_applications_for_user(job_id, user_id)  # returns list
+        if existing:
+            flash("You already applied for this job.", "info")
+            return redirect(url_for("jobs.job_detail", job_id=job_id))
+    except Exception as e:
+        current_app.logger.warning("Could not check existing applications: %s", e)
+
+    # Read + normalize form values
+    proposal = (request.form.get("proposal") or "").strip() or None
+    bid_raw  = (request.form.get("bid_cents") or "").replace(",", "").replace(" ", "")
+    days_raw = (request.form.get("days_to_complete") or "").strip()
+
+    def _int_or_none(s):
+        try:
+            return int(s) if s not in (None, "",) else None
+        except (TypeError, ValueError):
+            return None
+
+    bid_cents = _int_or_none(bid_raw)
+    days      = _int_or_none(days_raw)
 
     payload = {
         "job_id": job_id,
-        "worker_id": user_id,
+        "applicant_id": user_id,      # schema is role-agnostic
         "proposal": proposal,
-        "bid_cents": int(bid_cents) if bid_cents else None,
-        "days_to_complete": int(days) if days else None,
+        "bid_cents": bid_cents,
+        "days_to_complete": days,
     }
 
-    def _post_to(path):
-        return requests.post(
-            f"{base}/{path}",
-            headers={**headers, "Prefer": "return=representation"},
-            json=payload,
-            timeout=6
-        )
+    base, headers = pgrst_base_and_headers()
 
+    def _post_to(path, *, upsert=False):
+        # If you added a UNIQUE(job_id, applicant_id), you can make this idempotent:
+        #   POST /job_applications?on_conflict=job_id,applicant_id
+        #   Prefer: resolution=merge-duplicates,return=representation
+        h = {**headers, "Prefer": "return=representation"}
+        url = f"{base}/{path}"
+        if upsert:
+            h["Prefer"] = "resolution=merge-duplicates,return=representation"
+            url = f"{url}?on_conflict=job_id,applicant_id"
+        return requests.post(url, headers=h, json=payload, timeout=8)
+
+    # Try create (optionally as upsert if you enabled unique constraint)
     try:
-        r = _post_to("job_applications")
-        if r.status_code == 404:
-            r = _post_to("job_applications")
+        r = _post_to("job_applications")  # set upsert=True if you added the unique index
     except requests.RequestException:
-        current_app.logger.exception("POST to PostgREST failed")
+        current_app.logger.exception("POST /job_applications failed (network)")
         flash("Network error reaching the database API.", "danger")
         return redirect(url_for("jobs.job_detail", job_id=job_id))
 
@@ -80,8 +122,7 @@ def apply_to_job(job_id: int):
         flash("Application submitted!", "success")
         return redirect(url_for("jobs.job_detail", job_id=job_id))
 
-    # Errors
-    msg = None
+    # Error handling
     try:
         body = r.json()
         msg = body.get("message") or body.get("hint") or body
@@ -89,12 +130,17 @@ def apply_to_job(job_id: int):
         msg = r.text or None
 
     if r.status_code == 409:
+        # Conflict most likely due to unique constraint on (job_id, applicant_id)
         flash("You already applied for this job.", "info")
     elif r.status_code in (401, 403):
         flash("Not authorized to apply. (401/403 from PostgREST)", "danger")
     elif r.status_code == 404:
         base_url = base.rstrip("/")
-        flash(f"PostgREST 404: endpoint not found at {base_url}/job_applications. Check table name & exposed schemas. Details: {msg}", "danger")
+        flash(
+            f"PostgREST 404: endpoint not found at {base_url}/job_applications. "
+            f"Check table name & exposed schemas. Details: {msg}",
+            "danger",
+        )
     else:
         flash(f"Could not submit application (HTTP {r.status_code}). Details: {msg}", "danger")
 
@@ -103,12 +149,11 @@ def apply_to_job(job_id: int):
 @bp.get("/jobs/<int:job_id>/apply", endpoint="apply_form")
 def apply_form(job_id: int):
     user_id = session.get("user_id")
-    role = (session.get("role") or "").lower()
-
-    if not user_id or role != "worker":
-        flash("Please log in as a worker to apply.", "warning")
+    if not user_id:
+        flash("Please log in to apply.", "warning")
         return redirect(url_for("auth.login", next=request.path))
 
+    # Load job
     try:
         job = api.get_job_api(job_id)
         if not job:
@@ -118,12 +163,21 @@ def apply_form(job_id: int):
         flash(f"Error loading job: {e}", "danger")
         return redirect(url_for("jobs.list_jobs"))
 
+    # Block applying to your own job
+    if job.get("customer_id") == user_id:
+        flash("You can’t apply to your own job.", "warning")
+        return redirect(url_for("jobs.job_detail", job_id=job_id))
+
+    # Only allow applying when job is open
     if (job.get("status") or "").lower() != "open":
         flash("This job is not open for applications.", "warning")
         return redirect(url_for("jobs.job_detail", job_id=job_id))
 
+    # Display helpers
     budget_cents = job.get("budget_cents")
-    budget_cents_display = f"G${budget_cents:,}" if isinstance(budget_cents, int) else (budget_cents or "")
+    budget_cents_display = (
+        f"G${budget_cents:,}" if isinstance(budget_cents, int) else (budget_cents or "")
+    )
     created_at_display = friendly_datetime(job.get("created_at"))
 
     return render_template(
@@ -177,33 +231,6 @@ def accept_application(job_id: int, app_id: int):
 
     return redirect(url_for("applications.list_applications", job_id=job_id))
 
-# @bp.post("/jobs/<int:job_id>/applications/<int:app_id>/decline", endpoint="decline_application")
-# def decline_application(job_id: int, app_id: int):
-#     # TODO: authorize owner/admin
-#     base, headers = pgrst_base_and_headers()
-#     try:
-#         r = requests.patch(
-#             f"{base}/job_applications?id=eq.{app_id}&job_id=eq.{job_id}",
-#             headers=headers,
-#             json={"status": "declined"},
-#             timeout=5
-#         )
-#     except requests.RequestException:
-#         current_app.logger.exception("PATCH /job_applications decline failed")
-#         flash("Could not decline application (network).", "danger")
-#         return redirect(url_for("applications.list_applications", job_id=job_id))
-
-#     if r.status_code in (200, 204):
-#         flash("Application declined.", "info")
-#     else:
-#         msg = None
-#         try:
-#             msg = r.json().get("message") or r.json().get("hint")
-#         except Exception:
-#             pass
-#         flash(msg or f"Could not decline application (HTTP {r.status_code}).", "danger")
-
-#     return redirect(url_for("applications.list_applications", job_id=job_id))
 
 @bp.post("/jobs/<int:job_id>/applications/<int:app_id>/withdraw", endpoint="withdraw_application")
 def withdraw_application(job_id: int, app_id: int):

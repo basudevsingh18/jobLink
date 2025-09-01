@@ -2,37 +2,16 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/job_detail.css') }}">
-<style>
-  /* === Pure CSS modal toggled by a hidden checkbox === */
-  #applyToggle { position: absolute; left: -9999px; }       /* hide the toggle */
-  .jl-modal        { position: fixed; inset: 0; display: none; z-index: 1000; }
-  #applyToggle:checked ~ .jl-modal { display: block; }      /* show when checked */
-  .jl-modal__backdrop {
-    position: absolute; inset: 0; background: rgba(0,0,0,.45); backdrop-filter: blur(2px);
-  }
-  .jl-modal__sheet {
-    position: relative; margin: 8vh auto 0; width: min(92vw, 520px);
-    background: var(--surface); color: var(--text);
-    border: 1px solid var(--line); border-radius: var(--radius-md, 12px);
-    box-shadow: var(--shadow); padding: 16px;
-  }
-  @media (max-width: 620px) { .jl-modal__sheet { margin-top: 4vh; } }
-</style>
+
 {% endblock %}
 
 {% block content %}
 
-{# ---- derive safe flags even if the view didn't pass them ---- #}
-{% set _role   = (session.role or '')|lower %}
-{% set _status = (job.status or '')|lower %}
-{% set _is_worker = (is_worker if is_worker is defined else (_role == 'worker')) %}
-{% set _is_open   = (is_open   if is_open   is defined else (_status == 'open')) %}
-{% set logged_in  = (logged_in if logged_in is defined else (session.get('user_id') or session.get('uid'))) %}
-{% set can_apply  = (_is_worker and _is_open) %}
-
 <nav class="crumbs">
   <a href="{{ url_for('jobs.list_jobs') }}">Jobs</a>
-  {% if job.category %}<span>/</span><a href="{{ url_for('jobs.list_jobs', category=job.category) }}">{{ job.category }}</a>{% endif %}
+  {% if job.category %}<span>/</span>
+  <a href="{{ url_for('jobs.list_jobs', category=job.category) }}">{{ job.category }}</a>
+  {% endif %}
   <span>/</span><span class="crumb-current">{{ job.title }}</span>
 </nav>
 
@@ -50,20 +29,21 @@
 
         <div class="meta-row">
           <span class="meta">
-            <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7m0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24">
+              <path fill="currentColor"
+                d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7m0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z" />
+            </svg>
             {{ job.location or 'Remote' }}
           </span>
           <span class="meta">
-            <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v13a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2m0 15H5V10h14z"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24">
+              <path fill="currentColor"
+                d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v13a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2m0 15H5V10h14z" />
+            </svg>
             Posted {{ created_at_display }}
           </span>
         </div>
       </div>
-
-      <!-- <div class="price">
-        <span class="amount">{{ budget_cents_display }}</span>
-        <span class="label">Budget</span>
-      </div> -->
     </header>
 
     <section class="detail-body">
@@ -78,20 +58,8 @@
     </footer>
   </section>
 
-  <!-- Hidden inline form (fallback submit if needed) -->
-  <form id="applyInlineForm" method="post" action="{{ url_for('applications.apply_to_job', job_id=job.id) }}" style="display:none;">
-    <input type="hidden" name="proposal" value="">
-    <input type="hidden" name="bid_cents" value="">
-    <input type="hidden" name="days_to_complete" value="">
-  </form>
-
   <!-- ASIDE / APPLY BOX -->
   <aside class="apply-box card">
-    <!-- <div class="apply-price">
-      <div class="amount">{{ budget_cents_display }}</div>
-      <div class="label">Budget</div>
-    </div> -->
-
     <ul class="apply-meta">
       <li><span>Budget</span><strong>{{ budget_cents_display }}</strong></li>
       <li><span>Location</span><strong>{{ job.location or 'Remote' }}</strong></li>
@@ -101,22 +69,29 @@
     </ul>
 
     {% if whatsapp %}
-      {% if logged_in %}
-        <a class="btn primary block" href="{{ whatsapp }}" target="_blank" rel="noopener">Message on WhatsApp</a>
-      {% else %}
-        <a class="btn primary block" href="{{ url_for('auth.login', next=request.path) }}">Log in to message</a>
-      {% endif %}
+    {% if logged_in %}
+    <!-- <a class="btn primary block" href="{{ whatsapp }}" target="_blank" rel="noopener">Message on WhatsApp</a> -->
+    {% else %}
+    <a class="btn primary block" href="{{ url_for('auth.login', next=request.path) }}">Log in to message</a>
+    {% endif %}
     {% endif %}
 
-{# ---- APPLY (I'm Interested) ---- #}
-{% set is_worker = (session.role or '')|lower == 'worker' %}
-{% set is_open   = (job.status or '')|lower == 'open' %}
-{% if is_worker and is_open %}
-  <a class="btn block" href="{{ url_for('applications.apply_form', job_id=job.id) }}">I'm Interested</a>
-  <!-- <small class="text-muted">Submitting a proposal is optional.</small> -->
- {% else %}
-  <!-- <small class="text-muted">Status: {{ job.status or 'unknown' }}</small>  -->
+
+{# Apply button logic — no roles, block owner and duplicate applications #}
+{% set is_owner = (session.get('user_id') and job.poster_id == session.get('user_id')) %}
+
+{% if (job.status or '')|lower == 'open' %}
+  {% if is_owner %}
+    <button class="btn block" disabled title="You posted this job">Poster cannot apply for owned jobs.</button>
+  {% elif has_applied %}
+    <button class="btn block" disabled title="You already applied">You already applied</button>
+  {% else %}
+    <a class="btn block" href="{{ url_for('applications.apply_form', job_id=job.id) }}">Apply for Job</a>
+  {% endif %}
 {% endif %}
+
+
+
   </aside>
 </article>
 
@@ -143,14 +118,11 @@
 {% if whatsapp %}
 <div class="action-bar">
   {% if logged_in %}
-    <a class="btn primary block" href="{{ whatsapp }}" target="_blank" rel="noopener">Message on WhatsApp</a>
+  <a class="btn primary block" href="{{ whatsapp }}" target="_blank" rel="noopener">Message on WhatsApp</a>
   {% else %}
-    <a class="btn primary block" href="{{ url_for('auth.login', next=request.path) }}">Log in to message</a>
+  <a class="btn primary block" href="{{ url_for('auth.login', next=request.path) }}">Log in to message</a>
   {% endif %}
 </div>
 {% endif %}
-
-
-
 
 {% endblock %}

@@ -7,7 +7,7 @@
 {% block content %}
 <div class="post">
   <h1>Post a Job</h1>
-  <form method="post" class="post-form">
+  <form method="post" action="{{ url_for('jobs.post_job') }}" class="post-form">
     <div class="grid two">
       <label>
         Title *
@@ -32,7 +32,13 @@
     <div class="grid three">
       <label>
         Budget (G$) *
-        <input type="number" name="budget" min="0" step="1" value="{{ (form.budget or '') if form else '' }}" required>
+        <input
+          type="number"
+          name="budget_cents"
+          min="0"
+          step="1"
+          value="{% if form %}{{ form.get('budget_cents', form.get('budget','')) }}{% else %}{% endif %}"
+          required>
       </label>
       <label>
         Location *

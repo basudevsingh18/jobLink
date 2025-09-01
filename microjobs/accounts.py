@@ -249,8 +249,6 @@ def me():
                 "email": session.get("user_email"),
             },
         )
-
-    # Fallback to role default
     return redirect(url_for("account.me", tab="jobs"))
 
 

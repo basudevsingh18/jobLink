@@ -8,6 +8,8 @@ import requests
 from typing import Any, Dict, Optional
 from werkzeug.security import generate_password_hash
 
+from microjobs.common import pgrst_base_and_headers
+
 # -----------------------------
 # PostgREST base + headers
 # -----------------------------
@@ -55,6 +57,18 @@ def list_job_categories(*, token: str | None = None) -> list[str]:
 
 def list_job_locations(*, token: str | None = None) -> list[str]:
     return _distinct_values("jobs", "location", token=token)
+
+
+def get_applications_for_user(job_id, user_id):
+    base, headers = pgrst_base_and_headers()
+    r = requests.get(
+        f"{base}/job_applications",
+        headers=headers,
+        params={"job_id": f"eq.{job_id}", "applicant_id": f"eq.{user_id}"},
+        timeout=6,
+    )
+    r.raise_for_status()
+    return r.json()
 
 
 # -----------------------------

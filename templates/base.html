@@ -27,43 +27,27 @@
     <div class="nav-container">
       <a class="brand" href="{{ url_for('jobs.list_jobs') }}">JobLink</a>
       <div class="nav-links">
-        <!-- <a class="{% if request.endpoint == 'jobs.list_jobs' %}active{% endif %}" href="{{ url_for('jobs.list_jobs') }}">Jobs</a> -->
         <a href="{{ url_for('jobs.all_jobs') }}">All Jobs</a>
-        {% if session.get('user_id') %}
-
-
-        {% if session.get('role') == 'customer' %}
-
-        <a class="cta-link {% if request.endpoint == 'jobs.post_job' %}active{% endif %}"
-          href="{{ url_for('jobs.post_job') }}">Post Job</a>
-        <a class="{% if request.endpoint == 'jobs.my_jobs' %}active{% endif %}" href="{{ url_for('jobs.my_jobs') }}">My
-          Jobs</a>
-
-        {% endif %}
 
         {% if session.get('user_id') %}
+          <a class="cta-link {% if request.endpoint == 'jobs.post_job' %}active{% endif %}"
+             href="{{ url_for('jobs.post_job') }}">Post Job</a>
+          <!-- <a class="{% if request.endpoint == 'jobs.my_jobs' %}active{% endif %}"
+             href="{{ url_for('jobs.my_jobs') }}">My Jobs</a> -->
+          <a class="{% if request.endpoint == 'account.me' %}active{% endif %}"
+             href="{{ url_for('account.me') }}">Profile</a>
 
-        <a class="{% if request.endpoint == 'account.me' %}active{% endif %}" href="{{ url_for('account.me') }}">
-          Profile
-        </a>
-
-        {% endif %}
-
-        <span class="user-info">
-          Hello, {{ session.get('user_name') }} <!-- ({{ session.get('role') }}) -->
-        </span>
-
-
-        <a href="{{ url_for('auth.logout') }}">Logout</a>
-
+          <span class="user-info">
+            Hello, {{ session.get('user_name') }}
+          </span>
+          <a href="{{ url_for('auth.logout') }}">Logout</a>
         {% else %}
-
-
-        <a class="{% if request.endpoint == 'auth.login' %}active{% endif %}"
-          href="{{ url_for('auth.login') }}">Login</a>
-        <a class="cta-link {% if request.endpoint == 'auth.register' %}active{% endif %}"
-          href="{{ url_for('auth.register') }}">Become a Seeker</a>
+          <a class="{% if request.endpoint == 'auth.login' %}active{% endif %}"
+             href="{{ url_for('auth.login') }}">Login</a>
+          <a class="cta-link {% if request.endpoint == 'auth.register' %}active{% endif %}"
+             href="{{ url_for('auth.register') }}">Become a Seeker</a>
         {% endif %}
+
         <span class="nav-underline"></span>
       </div>
     </div>
@@ -71,7 +55,7 @@
 
   {# Landing hero: shows on Jobs page when not searching/filtering. #}
   {% set show_hero = (request.endpoint == 'jobs.list_jobs' and not (request.args.get('q') or
-  request.args.get('category') or request.args.get('location'))) %}
+                              request.args.get('category') or request.args.get('location'))) %}
   {% if show_hero %}
   <header class="hero">
     <div class="hero-inner">
@@ -79,45 +63,40 @@
       <p class="hero-sub">JobLink connects customers and skilled workers across Guyana—quickly, simply, and safely.</p>
       <div class="hero-actions">
         <a class="btn primary" href="{{ url_for('jobs.all_jobs') }}#results">Browse Jobs</a>
-        {% if session.get('role') == 'customer' %}
         <a class="btn ghost" href="{{ url_for('jobs.post_job') }}">Post a Job</a>
-        {% endif %}
       </div>
 
+      <div class="hero-kpis" role="group" aria-label="Key stats">
+        <div class="kpi">
+          <span class="kpi-ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="14" height="14">
+              <path fill="currentColor" d="M12 1.9a10.1 10.1 0 1 0 0 20.2A10.1 10.1 0 0 0 12 1.9m.8 5.6h-1.6v5.3l4.5 2.7.8-1.3-3.7-2.2z"/>
+            </svg>
+          </span>
+          <span class="kpi-num">24/7</span>
+          <span class="kpi-label">Availability</span>
+        </div>
 
+        <div class="kpi">
+          <span class="kpi-ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="14" height="14">
+              <path fill="currentColor" d="M12 3a7 7 0 0 0-7 7h2a5 5 0 0 1 10 0h2a7 7 0 0 0-7-7m-7 8v2h14v-2zm0 4a7 7 0 0 0 7 7 7 7 0 0 0 7-7h-2a5 5 0 0 1-10 0z"/>
+            </svg>
+          </span>
+          <span class="kpi-num">GYD$</span>
+          <span class="kpi-label">Upfront budgets</span>
+        </div>
 
-<div class="hero-kpis" role="group" aria-label="Key stats">
-  <div class="kpi">
-    <span class="kpi-ico" aria-hidden="true">
-      <!-- clock -->
-      <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M12 1.9a10.1 10.1 0 1 0 0 20.2A10.1 10.1 0 0 0 12 1.9m.8 5.6h-1.6v5.3l4.5 2.7.8-1.3-3.7-2.2z"/></svg>
-    </span>
-    <span class="kpi-num">24/7</span>
-    <span class="kpi-label">Availability</span>
-  </div>
-
-  <div class="kpi">
-    <span class="kpi-ico" aria-hidden="true">
-      <!-- currency -->
-      <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M12 3a7 7 0 0 0-7 7h2a5 5 0 0 1 10 0h2a7 7 0 0 0-7-7m-7 8v2h14v-2zm0 4a7 7 0 0 0 7 7 7 7 0 0 0 7-7h-2a5 5 0 0 1-10 0z"/></svg>
-    </span>
-    <span class="kpi-num">GYD$</span>
-    <span class="kpi-label">Upfront budgets</span>
-  </div>
-
-  <div class="kpi">
-    <span class="kpi-ico" aria-hidden="true">
-      <!-- chat/WA hint -->
-      <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M12 3a9 9 0 0 0-9 9c0 1.7.5 3.3 1.4 4.7L3 21l4.4-1.3A9 9 0 1 0 12 3m0 2a7 7 0 0 1 7 7 7 7 0 0 1-10.3 6.1l-.4-.2-2.6.8.8-2.5-.2-.4A7 7 0 0 1 12 5"/></svg>
-    </span>
-    <span class="kpi-num">592</span>
-    <span class="kpi-label">WhatsApp contact</span>
-  </div>
-</div>
-
-
-
-
+        <div class="kpi">
+          <span class="kpi-ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="14" height="14">
+              <path fill="currentColor" d="M12 3a9 9 0 0 0-9 9c0 1.7.5 3.3 1.4 4.7L3 21l4.4-1.3A9 9 0 1 0 12 3m0 2a7 7 0 0 1 7 7 7 7 0 0 1-10.3 6.1l-.4-.2-2.6.8.8-2.5-.2-.4A7 7 0 0 1 12 5"/>
+            </svg>
+          </span>
+          <span class="kpi-num">592</span>
+          <span class="kpi-label">WhatsApp contact</span>
+        </div>
+      </div>
     </div>
   </header>
   {% endif %}
@@ -139,5 +118,4 @@
     <p>© 2025 JobLink — Built for Guyana</p>
   </footer>
 </body>
-
 </html>
