@@ -140,15 +140,14 @@
             <p class="proposal">{{ app.proposal or '—' }}</p>
 
             <div class="app-actions">
-              {% if app.status in ['pending','declined'] and (job.status or 'open') in ['open','offered'] and has_job
+              {% if app.status in ['submitted'] and (job.status or 'open') in ['open'] and has_job
               and job_id is not none %}
-              <form class="inline" method="post"
-                action="{{ url_for('applications.offer_application', job_id=(job_id|int), app_id=app.id) }}">
+              <form class="inline" method="post" action="{{ url_for('applications.offer_application', job_id=(job_id|int), app_id=app.id) }}">
                 <button class="btn small primary" type="submit">Offer</button>
               </form>
               {% endif %}
 
-              {% if app.status in ['pending','offered'] and has_job and job_id is not none %}
+              {% if app.status in ['submitted'] and has_job and job_id is not none %}
               <form class="inline" method="post"
                 action="{{ url_for('applications.reject_application_by_customer', job_id=(job_id|int), app_id=app.id) }}">
                 <button class="btn small" type="submit">Reject</button>

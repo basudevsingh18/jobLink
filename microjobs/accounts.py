@@ -2,7 +2,7 @@
 from __future__ import annotations
 from collections import defaultdict
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session
+from flask import Blueprint, current_app, render_template, request, redirect, url_for, flash, session
 from urllib.parse import quote, quote_plus
 from datetime import datetime
 from typing import Optional
@@ -89,66 +89,80 @@ def me():
     # CUSTOMER: My Jobs (+ embedded applications)
     # ------------------------
     if tab == "jobs":
+        heading = "My Jobs"
+        jobs, total = [], 0
 
-        heading = "My Jobs (with Applications)"
+        # Ask PostgREST to return an exact count in Content-Range
         h = {**headers, "Prefer": "count=exact"}
 
-        try:
-            # Try embedding applications + worker info (requires FKs)
-            r = requests.get(
+        # Page params already computed: page_size, offset
+        # We’ll try customer_id first (preferred), then fall back to poster_id.
+        def _fetch_by(owner_col: str):
+            return requests.get(
                 f"{base}/jobs"
-                f"?customer_id=eq.{uid}"
-                f"&select=id,title,category,location,budget,status,created_at,"
-                f"applications:job_applications(*,worker:users(name))"
+                f"?{owner_col}=eq.{uid}"
+                f"&select=id,title,category,location,budget_cents,status,created_at"
                 f"&order=created_at.desc,id.desc"
                 f"&limit={page_size}&offset={offset}",
                 headers=h, timeout=8
-            )
+            )       
+
+
+        try:
+            r = _fetch_by("customer_id")
+            if not r.ok:
+                # Fallback for older schemas that used poster_id
+                r = _fetch_by("poster_id")
+
             if r.ok:
                 jobs = r.json()
-                total = _total_from(r, len(jobs))
+                total = _total_from(r, len(jobs))  # uses Content-Range when present
             else:
-                # Fallback: fetch jobs then apps separately and stitch by job_id
-                rj = requests.get(
-                    f"{base}/jobs"
-                    f"?customer_id=eq.{uid}"
-                    f"&select=id,title,category,location,budget,status,created_at"
-                    f"&order=created_at.desc,id.desc"
-                    f"&limit={page_size}&offset={offset}",
-                    headers=h, timeout=8
-                )
-                if rj.ok:
-                    jobs = rj.json()
-                    total = _total_from(rj, len(jobs))
-                    job_ids = [str(j["id"]) for j in jobs if "id" in j]
-                    if job_ids:
-                        ra = requests.get(
-                            f"{base}/job_applications"
-                            f"?job_id=in.({','.join(job_ids)})"
-                            f"&select=*,worker:users(name,contact)"
-                            f"&order=created_at.desc",
-                            headers=headers, timeout=8
-                        )
-                        apps_by_job = defaultdict(list)
-                        if ra.ok:
-                            for a in ra.json():
-                                apps_by_job[a["job_id"]].append(a)
-                        for j in jobs:
-                            j["applications"] = apps_by_job.get(j["id"], [])
+                current_app.logger.warning("My Jobs request failed: %s %s", r.status_code, r.text)
+                flash("Could not load your jobs.", "danger")
+
+            # 2) If we have jobs, fetch their applications in one batch and stitch them in
+            if jobs:
+                job_ids = [str(j["id"]) for j in jobs if "id" in j]
+                apps_by_job = defaultdict(list)
+
+                if job_ids:
+                    ra = requests.get(
+                        f"{base}/job_applications"
+                        f"?job_id=in.({','.join(job_ids)})"
+                        f"&select=id,job_id,applicant_id,proposal,bid_cents,days_to_complete,created_at"
+                        f"&order=created_at.desc",
+                        headers=headers, timeout=8
+                    )
+                    if ra.ok:
+                        for a in ra.json():
+                            apps_by_job[a["job_id"]].append(a)
+                    else:
+                        current_app.logger.warning("Applications fetch failed: %s %s", ra.status_code, ra.text)
+
+                # Attach apps + a handy count to each job
+                for j in jobs:
+                    apps = apps_by_job.get(j["id"], [])
+                    j["applications"] = apps
+                    j["applications_count"] = len(apps)
+
         except Exception as e:
-            flash(f"Could not load your jobs/applications: {e}", "danger")
+            current_app.logger.exception("Error loading My Jobs: %s", e)
+            flash("Could not load your jobs.", "danger")
 
         return render_template(
             "auth/profile.html",
-            tab=tab, heading=heading,
-            jobs=jobs, total=total or (len(jobs) if jobs else 0),
+            tab=tab,
+            heading=heading,
+            jobs=jobs,
+            total=total or (len(jobs) if jobs else 0),
             page=page,
             user={
                 "id": uid,
                 "name": session.get("user_name"),
-                "email": session.get("user_email")
+                "email": session.get("user_email"),
             },
-        )
+        )       
 
     # ------------------------
     # WORKER: Applications tab (your applications + embedded job)
@@ -161,11 +175,16 @@ def me():
         try:
             r = requests.get(
                 f"{base}/job_applications"
-                f"?worker_id=eq.{uid}"
-                f"&select=*,job:jobs(*)"
+                f"?applicant_id=eq.{uid}"
+                f"&select="
+                "id,job_id,proposal,bid_cents,days_to_complete,created_at,"
+                "job:jobs!job_id("
+                    "id,title,category,location,budget_cents,status,created_at"
+                ")"
                 f"&order=created_at.desc"
                 f"&limit={page_size}&offset={offset}",
-                headers=h, timeout=8
+                headers={**headers, "Prefer": "count=exact"},
+                timeout=8
             )
             if r.ok:
                 jobs = r.json()
@@ -252,9 +271,6 @@ def me():
     return redirect(url_for("account.me", tab="jobs"))
 
 
-
-
-
 @bp.post("/me/profile")
 def update_profile():
     if not require_auth():
@@ -266,10 +282,8 @@ def update_profile():
 
     try:
         # You may not have this yet—see API helper below
-        api.update_user_api(session["user_id"], {
+        api.update_user(session["user_id"], {
             "name": name or None,
-            "contact": contact or None,
-            "location": location or None
         })
         # refresh session name
         if name: session["user_name"] = name
@@ -278,6 +292,7 @@ def update_profile():
         flash(f"Could not update profile: {e}", "danger")
 
     return redirect(url_for("account.me", tab="settings"))
+
 
 @bp.post("/me/password")
 def change_password():
@@ -294,7 +309,7 @@ def change_password():
         return redirect(url_for("account.me", tab="settings"))
 
     try:
-        api.update_user_api(session["user_id"], {
+        api.update_user(session["user_id"], {
             "password_hash": generate_password_hash(pw)
         })
         flash("Password changed.", "success")
