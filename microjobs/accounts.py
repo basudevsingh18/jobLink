@@ -70,19 +70,15 @@ def current_db_user_id():
 
 @bp.route("/me")
 def me():
-    uid = current_db_user_id()
+    uid = current_db_user_id() 
     if not uid:
         return redirect(url_for("auth.login", next=request.full_path))
 
-    # Tab selection: honor query param, default to "jobs"
+    # Default tab: workers → 'accepted', everyone else → 'jobs'
     requested = (request.args.get("tab") or "").strip().lower()
     tab = requested or "jobs"
 
-    # Pagination
-    try:
-        page = int(request.args.get("page", 1))
-    except (TypeError, ValueError):
-        page = 1
+    page = int(request.args.get("page", 1))
     page_size = 20
     offset = (page - 1) * page_size
 
@@ -90,14 +86,15 @@ def me():
     jobs, total = [], 0
 
     # ------------------------
-    # CUSTOMER-LIKE: My Jobs (+ embedded applications)
+    # CUSTOMER: My Jobs (+ embedded applications)
     # ------------------------
     if tab == "jobs":
+
         heading = "My Jobs (with Applications)"
         h = {**headers, "Prefer": "count=exact"}
 
         try:
-            # Preferred: embed applications + worker info (requires FK/RI)
+            # Try embedding applications + worker info (requires FKs)
             r = requests.get(
                 f"{base}/jobs"
                 f"?customer_id=eq.{uid}"
@@ -111,7 +108,7 @@ def me():
                 jobs = r.json()
                 total = _total_from(r, len(jobs))
             else:
-                # Fallback: fetch jobs, then apps separately and stitch
+                # Fallback: fetch jobs then apps separately and stitch by job_id
                 rj = requests.get(
                     f"{base}/jobs"
                     f"?customer_id=eq.{uid}"
@@ -149,14 +146,15 @@ def me():
             user={
                 "id": uid,
                 "name": session.get("user_name"),
-                "email": session.get("user_email"),
+                "email": session.get("user_email")
             },
         )
 
     # ------------------------
-    # Applications tab (your applications + embedded job)
+    # WORKER: Applications tab (your applications + embedded job)
     # ------------------------
     if tab == "applications":
+
         heading = "My Applications"
         h = {**headers, "Prefer": "count=exact"}
 
@@ -183,14 +181,15 @@ def me():
             user={
                 "id": uid,
                 "name": session.get("user_name"),
-                "email": session.get("user_email"),
+                "email": session.get("user_email")
             },
         )
 
     # ------------------------
-    # Accepted tab (assigned jobs)
+    # WORKER: Accepted tab (assigned jobs)
     # ------------------------
     if tab == "accepted":
+
         heading = "Accepted Jobs"
         h = {**headers, "Prefer": "count=exact"}
 
@@ -231,7 +230,7 @@ def me():
             user={
                 "id": uid,
                 "name": session.get("user_name"),
-                "email": session.get("user_email"),
+                "email": session.get("user_email")
             },
         )
 
@@ -251,7 +250,7 @@ def me():
             },
         )
 
-    # Fallback to a neutral default (no role logic)
+    # Fallback to role default
     return redirect(url_for("account.me", tab="jobs"))
 
 

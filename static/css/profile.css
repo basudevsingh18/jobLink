@@ -471,3 +471,6 @@
   .text-actions { white-space: normal; display: flex; gap: 10px; flex-wrap: wrap; }
   .text-actions form + form::before { display: none; }
 }
+
+
+
