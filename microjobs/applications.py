@@ -341,38 +341,53 @@ def offer_application(job_id: int, app_id: int):
 
 @bp.post("/jobs/<int:job_id>/applications/<int:app_id>/reject", endpoint="reject_application_by_customer")
 def reject_application_by_customer(job_id: int, app_id: int):
-    """Customer rejects a proposal. If the rejected app was the current 'offered'
-    and no other apps are 'offered', mark the job back to 'open'."""
-    uid  = session.get("user_id")
-    role = (session.get("role") or "").lower()
-    if not uid or role != "customer":
-        flash("Only customers can reject proposals.", "warning")
-        return redirect(url_for("account.me", tab="jobs"))
+    """
+    Owner-only: reject a proposal. If the rejected app was the current 'offered'
+    and no other apps are 'offered', mark the job back to 'open'.
+    """
+    uid = session.get("user_id")
+    if not uid:
+        flash("Please log in.", "warning")
+        return redirect(url_for("auth.login", next=request.path))
 
     base, headers = pgrst_base_and_headers()
 
-    # 1) Read the application to see its current status and verify belongs to job
+    # 1) Read the application (ensure it exists and belongs to the job)
     r0 = requests.get(
         f"{base}/job_applications?id=eq.{app_id}&select=id,job_id,status&limit=1",
-        headers=headers, timeout=5
+        headers=headers, timeout=6
     )
     if not r0.ok or not r0.json():
         flash("Application not found.", "warning")
         return redirect(url_for("account.me", tab="jobs"))
 
     app = r0.json()[0]
-    if str(app["job_id"]) != str(job_id):
+    if str(app.get("job_id")) != str(job_id):
         flash("This application does not belong to the selected job.", "warning")
+        return redirect(url_for("account.me", tab="jobs"))
+
+    # 2) Verify current user owns the job
+    rj = requests.get(
+        f"{base}/jobs?id=eq.{job_id}&select=id,poster_id,status&limit=1",
+        headers=headers, timeout=6
+    )
+    if not rj.ok or not rj.json():
+        flash("Job not found.", "warning")
+        return redirect(url_for("account.me", tab="jobs"))
+
+    job = rj.json()[0]
+    if str(job.get("poster_id")) != str(uid):
+        flash("Only the job owner can reject proposals.", "warning")
         return redirect(url_for("account.me", tab="jobs"))
 
     was_offered = ((app.get("status") or "").lower() == "offered")
 
-    # 2) Decline the application (by PK only)
+    # 3) Decline the application (by PK only)
     r1 = requests.patch(
         f"{base}/job_applications?id=eq.{app_id}",
         headers={**headers, "Prefer": "return=minimal"},
         json={"status": "declined"},
-        timeout=6
+        timeout=8
     )
     if r1.status_code not in (200, 204):
         try:
@@ -382,20 +397,19 @@ def reject_application_by_customer(job_id: int, app_id: int):
         flash(f"Could not decline (HTTP {r1.status_code}). {err}", "danger")
         return redirect(url_for("account.me", tab="jobs"))
 
-    # 3) If we just declined the offered app, check if any other offers remain
+    # 4) If we just declined the offered app, and there are no other offers, set job back to open
     if was_offered:
         r2 = requests.get(
             f"{base}/job_applications?job_id=eq.{job_id}&status=eq.offered&select=id&limit=1",
-            headers=headers, timeout=5
+            headers=headers, timeout=6
         )
         others_offered = (r2.ok and bool(r2.json()))
         if not others_offered:
-            # 4) No other offers → set job back to open
             r3 = requests.patch(
                 f"{base}/jobs?id=eq.{job_id}",
                 headers={**headers, "Prefer": "return=minimal"},
                 json={"status": "open"},
-                timeout=5
+                timeout=8
             )
             if r3.status_code not in (200, 204):
                 try:
@@ -414,41 +428,51 @@ def reject_application_by_customer(job_id: int, app_id: int):
 #These two endpoints are for when a worker is accepting and rejecting offered jobs
 @bp.post("/jobs/<int:job_id>/applications/<int:app_id>/accept-offer", endpoint="worker_accept_offer")
 def worker_accept_offer(job_id: int, app_id: int):
-    """Worker accepts an offer:
-       - require app.status='offered' and job.status='offered' (or 'open' if your DB expects it)
-       - insert into accepted_jobs FIRST
-       - set application -> 'accepted'
-       - set job -> 'assigned' (or 'accepted' if that's your state)
-       - decline all other applications for this job
     """
-    uid  = session.get("user_id")
-    role = (session.get("role") or "").lower()
-    if not uid or role != "worker":
-        flash("You must be a worker to accept offers.", "warning")
-        return redirect(url_for("account.me", tab="applications"))
+    Accept an offer (no role checks):
+      - require app.status='offered' and job.status in ('offered','open')
+      - insert into accepted_jobs FIRST
+      - set application -> 'accepted'
+      - set job -> 'assigned'
+      - decline all other applications for this job
+    """
+    uid = session.get("user_id")
+    if not uid:
+        flash("Please log in.", "warning")
+        return redirect(url_for("auth.login", next=request.path))
 
     base, headers = pgrst_base_and_headers()
 
-    # 1) Read the application
+    # 1) Read the application and validate ownership + linkage to job
     ra = requests.get(
-        f"{base}/job_applications?id=eq.{app_id}&select=id,job_id,worker_id,status&limit=1",
+        f"{base}/job_applications"
+        f"?id=eq.{app_id}"
+        f"&select=id,job_id,applicant_id,status"
+        f"&limit=1",
         headers=headers, timeout=6
     )
     if not ra.ok or not ra.json():
         flash("Application not found.", "warning")
         return redirect(url_for("account.me", tab="applications"))
+
     app = ra.json()[0]
+
     if str(app.get("job_id")) != str(job_id):
         flash("Application does not belong to this job.", "warning")
         return redirect(url_for("account.me", tab="applications"))
-    if str(app.get("worker_id")) != str(uid):
+
+    # If your schema still uses worker_id instead of applicant_id, use this check instead:
+    # if str(app.get("worker_id")) != str(uid): ...
+
+    if str(app.get("applicant_id")) != str(uid):
         flash("You can only accept offers made to you.", "warning")
         return redirect(url_for("account.me", tab="applications"))
+
     if (app.get("status") or "").lower() != "offered":
         flash("This application is not currently offered.", "warning")
         return redirect(url_for("account.me", tab="applications"))
 
-    # 2) Read the job
+    # 2) Read the job and validate state
     rj = requests.get(
         f"{base}/jobs?id=eq.{job_id}&select=id,status&limit=1",
         headers=headers, timeout=6
@@ -456,26 +480,37 @@ def worker_accept_offer(job_id: int, app_id: int):
     if not rj.ok or not rj.json():
         flash("Job not found.", "warning")
         return redirect(url_for("account.me", tab="applications"))
+
     job = rj.json()[0]
     job_status = (job.get("status") or "").lower()
-    if job_status not in ("offered", "open"):  # include 'open' if your DB requires it
+    if job_status not in ("offered", "open"):
         flash(f"Job is not in an offerable state (current: {job.get('status')}).", "warning")
         return redirect(url_for("account.me", tab="applications"))
 
-    # 3) Insert into accepted_jobs FIRST (so any trigger can validate job is still open/offered)
+    # 3) Insert into accepted_jobs FIRST (idempotent-friendly)
+    ins_payload = {
+        "job_id": job_id,
+        "application_id": app_id,  # ✅ the application PK
+        "worker_id": uid,          # ✅ the logged-in user
+    }
     ins = requests.post(
         f"{base}/accepted_jobs",
         headers={**headers, "Prefer": "return=representation"},
-        json={"job_id": job_id, "worker_id": uid},
+        json=ins_payload,
         timeout=6
     )
-    if ins.status_code not in (200, 201, 409):  # 409 if already inserted — treat as okay
-        try: err = ins.json()
-        except Exception: err = ins.text
-        flash(f"Could not record acceptance (HTTP {ins.status_code}). {err}", "danger")
+
+
+    if ins.status_code not in (200, 201, 409):  # 409 = already recorded (ok)
+        try:
+            err = ins.json()
+        except Exception:
+            err = ins.text or "<no error body>"
+        flash(f"Could not record acceptance (PostgREST {ins.status_code}). {err}", "danger")
         return redirect(url_for("account.me", tab="applications"))
 
-    # 4) Update the application -> 'accepted'
+
+    # 4) Mark this application as 'accepted'
     ua = requests.patch(
         f"{base}/job_applications?id=eq.{app_id}",
         headers={**headers, "Prefer": "return=minimal"},
@@ -483,26 +518,28 @@ def worker_accept_offer(job_id: int, app_id: int):
         timeout=6
     )
     if ua.status_code not in (200, 204):
-        try: err = ua.json()
-        except Exception: err = ua.text
+        try:
+            err = ua.json()
+        except Exception:
+            err = ua.text
         flash(f"Accepted, but failed to update application (HTTP {ua.status_code}). {err}", "warning")
         return redirect(url_for("account.me", tab="applications"))
 
-    # 5) Update the job -> 'assigned' (or 'accepted' if that's your chosen state)
+    # 5) Update job status to 'assigned' (or 'accepted' if that's your state)
     uj = requests.patch(
         f"{base}/jobs?id=eq.{job_id}",
         headers={**headers, "Prefer": "return=minimal"},
-        json={"status": "assigned"},
+        json={"status": "accepted"},
         timeout=6
     )
     if uj.status_code not in (200, 204):
-        try: err = uj.json()
-        except Exception: err = uj.text
+        try:
+            err = uj.json()
+        except Exception:
+            err = uj.text
         flash(f"Accepted, but job status update failed (HTTP {uj.status_code}). {err}", "warning")
-        # continue anyway so the worker sees progress
-        # return redirect(url_for("account.me", tab="applications"))
 
-    # 6) Decline everyone else (best-effort)
+    # 6) Decline all other applications for this job (best effort)
     try:
         requests.patch(
             f"{base}/job_applications?job_id=eq.{job_id}&id=neq.{app_id}",
@@ -517,21 +554,36 @@ def worker_accept_offer(job_id: int, app_id: int):
     return redirect(url_for("account.me", tab="applications"))
 
 
-
 @bp.post("/jobs/<int:job_id>/applications/<int:app_id>/reject-offer", endpoint="worker_reject_offer")
 def worker_reject_offer(job_id: int, app_id: int):
-    """Worker rejects an offer. If no other offers remain, job may go back to open."""
+    """Reject an offer. Only the applicant who owns the application can do this.
+       If no other offers remain, job may go back to open.
+    """
     uid = session.get("user_id")
-    role = (session.get("role") or "").lower()
-    if not uid or role != "worker":
-        flash("You must be a worker to reject offers.", "warning")
-        return redirect(url_for("account.me", tab="applications"))
+    if not uid:
+        flash("Please log in to reject offers.", "warning")
+        return redirect(url_for("auth.login", next=request.path))
 
     base, headers = pgrst_base_and_headers()
 
+    # 1) Verify this application belongs to the current user
+    ra = requests.get(
+        f"{base}/job_applications?id=eq.{app_id}&job_id=eq.{job_id}&select=id,applicant_id,status&limit=1",
+        headers=headers, timeout=6
+    )
+    if not ra.ok or not ra.json():
+        flash("Application not found.", "warning")
+        return redirect(url_for("account.me", tab="applications"))
+
+    app = ra.json()[0]
+    if str(app.get("applicant_id")) != str(uid):
+        flash("You can only reject offers made to you.", "warning")
+        return redirect(url_for("account.me", tab="applications"))
+
+    # 2) Decline the application
     try:
         r = requests.patch(
-            f"{base}/job_applications?id=eq.{app_id}&job_id=eq.{job_id}&worker_id=eq.{uid}",
+            f"{base}/job_applications?id=eq.{app_id}",
             headers=headers,
             json={"status": "declined"},
             timeout=6
@@ -542,18 +594,22 @@ def worker_reject_offer(job_id: int, app_id: int):
         return redirect(url_for("account.me", tab="applications"))
 
     if r.status_code in (200, 204):
-        # If customer had marked job as offered, and no other offers remain, open it back up
+        # 3) If job was offered, and no other offers remain, reopen job
         try:
             still_offered = requests.get(
-                f"{base}/job_applications?job_id=eq.{job_id}&status=eq.offered",
+                f"{base}/job_applications?job_id=eq.{job_id}&status=eq.offered&select=id&limit=1",
                 headers=headers, timeout=6
-            ).json()
-            if not still_offered:
+            )
+            if still_offered.ok and not still_offered.json():
                 _job_set_status(base, headers, job_id, "open")
         except Exception:
             pass
         flash("Offer rejected.", "info")
     else:
-        flash(f"Could not reject offer (HTTP {r.status_code}).", "danger")
+        try:
+            err = r.json()
+        except Exception:
+            err = r.text
+        flash(f"Could not reject offer (HTTP {r.status_code}). {err}", "danger")
 
     return redirect(url_for("account.me", tab="applications"))

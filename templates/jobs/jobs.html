@@ -27,12 +27,26 @@
 {% if jobs and jobs|length > 0 %}
 <div class="jobs-grid {% if view == 'list' %}alt{% endif %}">
   {% for j in jobs %}
-    <a class="card job-card" href="{{ url_for('jobs.job_detail', job_id=j.id) }}" aria-label="{{ j.title }}">
+    {# compute helper bits #}
+    {% set featured = ' is-featured' if j.is_featured else '' %}
+    {% set poster_name = (j.poster_name if j.poster_name else (j.poster or '')) %}
+    {% set initials = (poster_name.split()[0][0] ~ (poster_name.split()[1][0] if poster_name.split()|length>1 else '')).upper() if poster_name else 'JL' %}
+    {% set status = (j.status|capitalize if j.status else 'Open') %}
+    {% set created_display = j.posted_human or (j.created_at[:10] if j.created_at) %}
+    <a class="card job-card{{ featured }}" href="{{ url_for('jobs.job_detail', job_id=j.id) }}" aria-label="{{ j.title }}">
       <div class="job-accent" aria-hidden="true"></div>
 
       <div class="job-body">
         <header class="job-top">
-          <h3 class="job-title">{{ j.title }}</h3>
+          <div class="job-titlewrap">
+            <h3 class="job-title">{{ j.title }}</h3>
+            <div class="job-sub">
+              <span class="avatar" aria-hidden="true">{{ initials }}</span>
+              {% if poster_name %}<span class="poster">{{ poster_name }}</span>{% endif %}
+              <span class="dot">•</span>
+              <span class="status {{ status|lower }}">{{ status }}</span>
+            </div>
+          </div>
 
           <div class="job-badges">
             {% if j.is_featured %}<span class="chip chip--lite">Featured</span>{% endif %}
@@ -40,11 +54,11 @@
           </div>
         </header>
 
-        <p class="desc">{{ j.description }}</p>
+        <p class="desc desc--roomy">{{ j.description }}</p>
 
         {% if j.tags %}
         <ul class="tags">
-          {% for t in j.tags[:3] %}
+          {% for t in j.tags[:4] %}
             <li class="chip chip--ghost">{{ t }}</li>
           {% endfor %}
         </ul>
@@ -52,24 +66,21 @@
 
         <footer class="job-meta">
           <span class="meta">
-            <!-- location icon -->
             <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7m0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z"/></svg>
             {{ j.location or 'Remote' }}
           </span>
           <span class="meta">
-            <!-- money icon -->
             <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 6h18v12H3zM5 8v8h14V8zM7 10h6v2H7z"/></svg>
             G${{ '{:,.0f}'.format(j.budget_cents) if j.budget_cents else '—' }}
           </span>
           <span class="meta">
-            <!-- calendar icon -->
             <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v13a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2m0 15H5V10h14z"/></svg>
-            {{ j.posted_human or (j.created_at[:10] if j.created_at) }}
+            {{ created_display }}
           </span>
         </footer>
       </div>
 
-      <div class="job-cta" aria-hidden="true">›</div>
+      <div class="job-cta" aria-hidden="true">View ›</div>
     </a>
   {% endfor %}
 </div>
@@ -78,4 +89,9 @@
     <p>No jobs found. Try a different search or category.</p>
   </div>
 {% endif %}
+
+
+
+
+
 {% endblock %}

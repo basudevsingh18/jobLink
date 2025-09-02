@@ -130,7 +130,7 @@ def me():
                     ra = requests.get(
                         f"{base}/job_applications"
                         f"?job_id=in.({','.join(job_ids)})"
-                        f"&select=id,job_id,applicant_id,proposal,bid_cents,days_to_complete,created_at"
+                        f"&select=id,job_id,applicant_id,proposal,bid_cents,days_to_complete,status,created_at"
                         f"&order=created_at.desc",
                         headers=headers, timeout=8
                     )
@@ -177,8 +177,8 @@ def me():
                 f"{base}/job_applications"
                 f"?applicant_id=eq.{uid}"
                 f"&select="
-                "id,job_id,proposal,bid_cents,days_to_complete,created_at,"
-                "job:jobs!job_id("
+                "id,job_id,proposal,bid_cents,days_to_complete,status,created_at,"
+                "job:jobs!job_applications_job_id_fkey("
                     "id,title,category,location,budget_cents,status,created_at"
                 ")"
                 f"&order=created_at.desc"

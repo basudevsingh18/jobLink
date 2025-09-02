@@ -30,8 +30,8 @@
     <select name="sort" aria-label="Sort">
         <option value="newest" {% if sort=='newest' %}selected{% endif %}>Newest</option>
         <option value="oldest" {% if sort=='oldest' %}selected{% endif %}>Oldest</option>
-        <option value="budget_hi" {% if sort=='budget_hi' %}selected{% endif %}>Budget ↑</option>
-        <option value="budget_lo" {% if sort=='budget_lo' %}selected{% endif %}>Budget ↓</option>
+        <option value="budget_cents_hi" {% if sort=='budget_cents_hi' %}selected{% endif %}>budget_cents ↑</option>
+        <option value="budget_cents_lo" {% if sort=='budget_cents_lo' %}selected{% endif %}>budget_cents ↓</option>
     </select>
 
     <input type="hidden" name="view" id="viewInput" value="{{ view or 'grid' }}">
@@ -79,7 +79,7 @@
                     <svg width="14" height="14" viewBox="0 0 24 24">
                         <path fill="currentColor" d="M3 6h18v12H3zM5 8v8h14V8zM7 10h6v2H7z" />
                     </svg>
-                    G${{ '{:,.0f}'.format(j.budget) if j.budget else '—' }}
+                    G${{ '{:,.0f}'.format(j.budget_cents) if j.budget_cents else '—' }}
                 </span>
                 <span class="meta">
                     <svg width="14" height="14" viewBox="0 0 24 24">

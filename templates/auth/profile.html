@@ -147,7 +147,7 @@
               </form>
               {% endif %}
 
-              {% if app.status in ['submitted'] and has_job and job_id is not none %}
+              {% if app.status in ['submitted','offered'] and has_job and job_id is not none %}
               <form class="inline" method="post"
                 action="{{ url_for('applications.reject_application_by_customer', job_id=(job_id|int), app_id=app.id) }}">
                 <button class="btn small" type="submit">Reject</button>
@@ -210,19 +210,32 @@
           <td>{{ app.days_to_complete or '—' }}</td>
           <td>{{ app.status or 'pending' }}</td>
           <td class="actions-cell text-actions">
-            {% if app.status == 'offered' and has_job and job_id is not none and (job.status or 'open') in
-            ['offered','open'] %}
-            <form class="inline" method="post"
-              action="{{ url_for('applications.worker_accept_offer', job_id=(job_id|int), app_id=app.id) }}">
-              <button class="btn small" type="submit">Accept offer</button>
-            </form>
-            <form class="inline" method="post"
-              action="{{ url_for('applications.worker_reject_offer', job_id=(job_id|int), app_id=app.id) }}">
-              <button class="btn small" type="submit">Reject offer</button>
-            </form>
-            {% else %}
-            <span class="muted">—</span>
-            {% endif %}
+            
+{% set app_status = (app.status or '')|lower %}
+
+{% if app_status == 'offered' %}
+  <!-- show both -->
+  <form class="inline" method="post"
+        action="{{ url_for('applications.worker_accept_offer', job_id=(job_id|int), app_id=app.id) }}">
+    <button class="btn small" type="submit">Accept offer</button>
+  </form>
+  <form class="inline" method="post"
+        action="{{ url_for('applications.worker_reject_offer', job_id=(job_id|int), app_id=app.id) }}">
+    <button class="btn small" type="submit">Reject offer</button>
+  </form>
+
+{% elif app_status == 'accepted' %}
+  <!-- show only reject -->
+  <form class="inline" method="post"
+        action="{{ url_for('applications.worker_reject_offer', job_id=(job_id|int), app_id=app.id) }}">
+    <button class="btn small" type="submit">Reject offer</button>
+  </form>
+
+{% else %}
+  <span class="muted">—</span>
+{% endif %}
+
+
           </td>
         </tr>
         {% endfor %}
