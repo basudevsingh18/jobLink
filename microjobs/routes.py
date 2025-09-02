@@ -172,6 +172,9 @@ def post_job():
     budget_cents_raw = (request.form.get("budget_cents") or "").strip()
     location = (request.form.get("location") or "").strip()
     contact_raw = (request.form.get("contact") or "").strip()
+    materials_provided = request.form.get('materials_provided') in ('true', 'on', '1')
+    site_visit_required = request.form.get('site_visit_required') in ('true', 'on', '1')
+    workmen_required   = request.form.get('workmen_required') in ('true', 'on', '1')
 
     if not all([title, description, budget_cents_raw, location, contact_raw]):
         flash("Please fill in all required fields.", "warning")
@@ -215,6 +218,9 @@ def post_job():
         "status": "open",
         # Set from session (RLS/JWT could enforce later)
         "poster_id": session.get("user_id"),
+        "materials_provided": materials_provided,
+        "site_visit_required": site_visit_required,
+        "workmen_required": workmen_required,
     }
 
     try:

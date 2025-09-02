@@ -61,15 +61,29 @@
   <!-- ASIDE / APPLY BOX -->
   <aside class="apply-box card">
     <div class="apply-price">
-  <div class="amount">{{ budget_cents_display }}</div>
-  <div class="label">Budget</div>
-</div>
+      <div class="amount">{{ budget_cents_display }}</div>
+      <div class="label">Budget</div>
+    </div>
     <ul class="apply-meta">
-  <!-- <li class="budget"><span>Budget</span><strong>{{ budget_cents_display }}</strong></li> -->
-      <li><span>Location</span><strong>{{ job.location or 'Remote' }}</strong></li>
+      <!-- <li class="budget"><span>Budget</span><strong>{{ budget_cents_display }}</strong></li> -->
       <li><span>Category</span><strong>{{ job.category or 'Other' }}</strong></li>
+      <li><span>Location</span><strong>{{ job.location or 'Remote' }}</strong></li>
       <li><span>Posted</span><strong>{{ created_at_display }}</strong></li>
-      {% if job.status %}<li><span>Status</span><strong>{{ job.status|capitalize }}</strong></li>{% endif %}
+      {% if job.status %}
+      <li><span>Status</span><strong>{{ job.status|capitalize }}</strong></li>
+      {% endif %}
+
+      <li><span>Materials Provided</span>
+        <strong>{{ 'Yes' if job.materials_provided else 'No' }}</strong>
+      </li>
+      <li><span>Site Visit Required</span>
+        <strong>{{ 'Yes' if job.site_visit_required else 'No' }}</strong>
+      </li>
+      <li><span>Workmen Required</span>
+        <strong>{{ 'Yes' if job.workmen_required else 'No' }}</strong>
+      </li>
+
+
     </ul>
 
     {% if whatsapp %}
@@ -81,18 +95,18 @@
     {% endif %}
 
 
-{# Apply button logic — no roles, block owner and duplicate applications #}
-{% set is_owner = (session.get('user_id') and job.poster_id == session.get('user_id')) %}
+    {# Apply button logic — no roles, block owner and duplicate applications #}
+    {% set is_owner = (session.get('user_id') and job.poster_id == session.get('user_id')) %}
 
-{% if (job.status or '')|lower == 'open' %}
-  {% if is_owner %}
+    {% if (job.status or '')|lower == 'open' %}
+    {% if is_owner %}
     <button class="btn block" disabled title="You posted this job">Poster cannot apply for owned jobs.</button>
-  {% elif has_applied %}
+    {% elif has_applied %}
     <button class="btn block" disabled title="You already applied">You already applied</button>
-  {% else %}
+    {% else %}
     <a class="btn block" href="{{ url_for('applications.apply_form', job_id=job.id) }}">Apply for Job</a>
-  {% endif %}
-{% endif %}
+    {% endif %}
+    {% endif %}
 
 
 

@@ -440,27 +440,6 @@
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 /* text-only actions, side-by-side */
 .text-actions {
   white-space: nowrap;
@@ -520,4 +499,70 @@
   .text-actions form+form::before {
     display: none;
   }
+}
+
+
+
+/* --- Job card layout --- */
+.job-card {
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+
+/* Header split */
+.job-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px dashed var(--line);
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+}
+.job-head-left { display: grid; row-gap: 4px; }
+.job-head-right { text-align: right; }
+.small { font-size: .9rem; }
+.mt-3--0 { margin-top: 6px; }
+
+/* Meta split: two columns that stack on mobile */
+.job-meta-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 8px;
+}
+.meta-title {
+  margin: 0 0 6px;
+  font-size: .95rem;
+  font-weight: 800;
+  color: var(--text);
+}
+.meta-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+.meta-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+}
+.meta-list li span { color: var(--muted); }
+.meta-list li strong { color: var(--text); }
+
+/* Dark-friendly tweak (optional) */
+@media (prefers-color-scheme: dark) {
+  .meta-list li { background: color-mix(in oklab, var(--surface), #000 6%); }
+}
+
+/* Mobile stacking */
+@media (max-width: 760px) {
+  .job-meta-split { grid-template-columns: 1fr; }
+  .job-head-right { text-align: left; }
 }

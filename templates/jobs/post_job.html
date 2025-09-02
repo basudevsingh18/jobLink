@@ -55,6 +55,37 @@
       </label>
     </div>
 
+    <!-- NEW: simple yes/no flags (no CSS changes, same label format) -->
+    <div class="grid three">
+      <label>
+        <input
+          type="checkbox"
+          name="materials_provided"
+          value="true"
+          {% if form and (form.materials_provided in [True, 'true', 'on', '1']) %}checked{% endif %}>
+        Materials will be provided
+      </label>
+
+      <label>
+        <input
+          type="checkbox"
+          name="site_visit_required"
+          value="true"
+          {% if form and (form.site_visit_required in [True, 'true', 'on', '1']) %}checked{% endif %}>
+        Site visit required
+      </label>
+
+      <label>
+        <input
+          type="checkbox"
+          name="workmen_required"
+          value="true"
+          {% if form and (form.workmen_required in [True, 'true', 'on', '1']) %}checked{% endif %}>
+        Workmen required
+      </label>
+    </div>
+
+
     <div class="form-actions">
       <button type="submit" class="submit">Publish</button>
       <a href="{{ url_for('jobs.list_jobs') }}" class="btn ghost">Cancel</a>
