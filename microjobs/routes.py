@@ -187,7 +187,7 @@ def post_job():
         if budget_cents < 0:
             raise ValueError
     except ValueError:
-        flash("budget_cents must be a whole number (G$).", "warning")
+        flash("budget_cents must be a whole number ($).", "warning")
         return render_template(
             "jobs/post_job.html",
             categories=CATEGORIES,
@@ -260,7 +260,7 @@ def job_detail(job_id: int):
     )
 
     budget_cents = job.get("budget_cents")
-    budget_cents_display = f"G${budget_cents:,}" if isinstance(budget_cents, int) else (budget_cents or "")
+    budget_cents_display = f"${budget_cents:,}" if isinstance(budget_cents, int) else (budget_cents or "")
     created_at_display = friendly_datetime(job.get("created_at"))
 
     # Related (best effort)

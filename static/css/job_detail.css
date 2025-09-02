@@ -315,19 +315,6 @@
   }
 }
 
-
-/* --- Minimal modal CSS --- */
-/* .jl-modal { position: fixed; inset: 0; display: none; z-index: 1000; }
-.jl-modal.is-open { display: block; }
-.jl-modal__backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.45); backdrop-filter: blur(2px); }
-.jl-modal__sheet {
-  position: relative; margin: 8vh auto 0; width: min(92vw, 520px);
-  background: var(--surface); color: var(--text);
-  border: 1px solid var(--line); border-radius: var(--radius-md, 12px);
-  box-shadow: var(--shadow); padding: 16px;
-} */
-
-
   /* === Pure CSS modal toggled by a hidden checkbox === */
   #applyToggle {
     position: absolute;
@@ -369,3 +356,53 @@
       margin-top: 4vh;
     }
   }
+
+
+
+  /* --- Budget hero --- */
+.apply-price {
+  padding: 10px 12px;
+  border: 1px solid color-mix(in oklab, var(--line), #fff 10%);
+  border-radius: var(--radius-sm);
+  background: color-mix(in oklab, var(--surface), #000 4%);
+  box-shadow: 0 8px 24px rgba(0,0,0,.12) inset, 0 8px 18px rgba(0,0,0,.08);
+}
+
+.apply-price .amount {
+  /* Make the number the visual anchor */
+  font-weight: 900;
+  font-size: clamp(26px, 4.2vw, 36px);
+  line-height: 1.1;
+  letter-spacing: .2px;
+  /* Gradient text for “wow” */
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 0 1px rgba(0,0,0,.15);
+}
+
+.apply-price .label {
+  color: var(--muted);
+  font-size: .85rem;
+  margin-top: 2px;
+}
+
+/* --- Keep the list item but style the budget row as a “featured” line --- */
+.apply-meta li.budget {
+  padding: 8px 10px;
+  border: 1px solid color-mix(in oklab, var(--line), #fff 10%);
+  border-radius: 10px;
+  background: linear-gradient(90deg, color-mix(in oklab, var(--glass), #fff 4%), color-mix(in oklab, var(--glass), #000 2%));
+  box-shadow: 0 6px 16px rgba(0,0,0,.10);
+}
+
+.apply-meta li.budget strong {
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: var(--text);
+}
+
+.apply-meta li.budget span {
+  color: var(--muted);
+}

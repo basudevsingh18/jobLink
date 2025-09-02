@@ -208,12 +208,12 @@ def me():
     # WORKER: Accepted tab (assigned jobs)
     # ------------------------
     if tab == "accepted":
-
         heading = "Accepted Jobs"
         h = {**headers, "Prefer": "count=exact"}
+        jobs, total = [], 0
 
         try:
-            # Preferred: accepted_jobs join
+            # Try accepted_jobs view
             r = requests.get(
                 f"{base}/accepted_jobs"
                 f"?worker_id=eq.{uid}"
@@ -222,11 +222,12 @@ def me():
                 f"&limit={page_size}&offset={offset}",
                 headers=h, timeout=8
             )
-            if r.ok and r.json():
-                jobs = r.json()
-                total = _total_from(r, len(jobs))
+            if r.ok and isinstance(r.json(), list):
+                data = r.json()
+                jobs = [{"accepted_at": row.get("accepted_at"), "job": row.get("job")} for row in data if isinstance(row, dict)]
+                total = len(jobs)
             else:
-                # Fallback: applications where status=accepted
+                # Fallback: applications table
                 r2 = requests.get(
                     f"{base}/job_applications"
                     f"?worker_id=eq.{uid}&status=eq.accepted"
@@ -235,16 +236,18 @@ def me():
                     f"&limit={page_size}&offset={offset}",
                     headers=h, timeout=8
                 )
-                if r2.ok:
-                    jobs = [{"accepted_at": row.get("created_at"), "job": row.get("job")} for row in r2.json()]
-                    total = _total_from(r2, len(jobs))
+                if r2.ok and isinstance(r2.json(), list):
+                    data2 = r2.json()
+                    jobs = [{"accepted_at": row.get("created_at"), "job": row.get("job")} for row in data2 if isinstance(row, dict)]
+                    total = len(jobs)
+
         except Exception as e:
             flash(f"Could not load accepted jobs: {e}", "danger")
 
         return render_template(
             "auth/profile.html",
             tab=tab, heading=heading,
-            jobs=jobs, total=total or (len(jobs) if jobs else 0),
+            jobs=jobs, total=total,
             page=page,
             user={
                 "id": uid,

@@ -176,7 +176,7 @@ def apply_form(job_id: int):
     # Display helpers
     budget_cents = job.get("budget_cents")
     budget_cents_display = (
-        f"G${budget_cents:,}" if isinstance(budget_cents, int) else (budget_cents or "")
+        f"${budget_cents:,}" if isinstance(budget_cents, int) else (budget_cents or "")
     )
     created_at_display = friendly_datetime(job.get("created_at"))
 
@@ -230,41 +230,6 @@ def accept_application(job_id: int, app_id: int):
         flash(msg or f"Could not accept application (HTTP {r.status_code}).", "danger")
 
     return redirect(url_for("applications.list_applications", job_id=job_id))
-
-
-@bp.post("/jobs/<int:job_id>/applications/<int:app_id>/withdraw", endpoint="withdraw_application")
-def withdraw_application(job_id: int, app_id: int):
-    user_id = session.get("user_id")
-    role = session.get("role")
-    if not user_id or role != "worker":
-        flash("Please log in as a worker.", "warning")
-        return redirect(url_for("auth.login", next=request.path))
-
-    base, headers = pgrst_base_and_headers()
-    try:
-        r = requests.patch(
-            f"{base}/job_applications?id=eq.{app_id}&job_id=eq.{job_id}&worker_id=eq.{user_id}",
-            headers=headers,
-            json={"status": "withdrawn"},
-            timeout=5
-        )
-    except requests.RequestException:
-        current_app.logger.exception("PATCH /job_applications withdraw failed")
-        flash("Could not withdraw application (network).", "danger")
-        return redirect(url_for("jobs.job_detail", job_id=job_id))
-
-    if r.status_code in (200, 204):
-        flash("Application withdrawn.", "info")
-    else:
-        msg = None
-        try:
-            msg = r.json().get("message") or r.json().get("hint")
-        except Exception:
-            pass
-        flash(msg or f"Could not withdraw application (HTTP {r.status_code}).", "danger")
-
-    return redirect(url_for("jobs.job_detail", job_id=job_id))
-
 
 
 #These two endpoints are for when a customer is accepting and rejecting proposals 
