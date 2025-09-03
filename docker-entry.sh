@@ -2,7 +2,7 @@
 set -euo pipefail
 
 if [ -z "${PGRST_DB_URI:-}" ]; then
-  echo "ERROR: PGRST_DB_URI is not set. Set it to your Render Postgres External Connection String."
+  echo "ERROR: PGRST_DB_URI is not set. Set it to your Postgres connection string."
   exit 1
 fi
 
