@@ -6,7 +6,7 @@ setlocal enableextensions enabledelayedexpansion
 
 :: Arguments / Defaults
 set CONTAINER=%1
-if "%CONTAINER%"=="" set CONTAINER=08262f5a7112cc840cc5c4623e7579dbc3598d25eccd8f97b9595f9339bf4ac0
+if "%CONTAINER%"=="" set CONTAINER=fd79f79b8f483685f1fbc38ddfdf750df2013ddc58c5d1acc98a7517456605b0
 
 set DB=%2
 if "%DB%"=="" set DB=joblink

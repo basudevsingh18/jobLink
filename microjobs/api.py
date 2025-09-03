@@ -13,7 +13,7 @@ from microjobs.common import pgrst_base_and_headers
 # -----------------------------
 # PostgREST base + headers
 # -----------------------------
-BASE = os.getenv("PGRST_URL", "http://localhost:3000")  # configurable via .env
+BASE = os.getenv("POSTGREST_BASE", "http://localhost:3000").rstrip("/")
 HEADERS = {
     "Content-Type": "application/json",
     "Prefer": "return=representation",  # return rows after insert/update/delete
