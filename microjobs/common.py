@@ -36,3 +36,11 @@ def pgrst_base_and_headers():
         "Content-Type": "application/json",
     }
     return base, headers
+
+def pgrst_base():
+    # Prefer internal private address on Render if available
+    hostport = os.getenv("POSTGREST_HOSTPORT")
+    if hostport:                     # e.g. "joblink-postgrest:10000"
+        return f"http://{hostport}"  # use HTTP on the private network
+    # fallback for local dev
+    return os.getenv("PGRST_BASE", "http://localhost:3000")

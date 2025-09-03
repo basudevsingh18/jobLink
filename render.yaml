@@ -1,0 +1,63 @@
+# render.yaml — single-commit deploy for JobLink (Flask + PostgREST + Postgres)
+
+services:
+  # --- Flask web app ---
+  - type: web
+    name: joblink-web
+    runtime: python
+    plan: starter
+    region: oregon                       # keep DB + all services in same region
+    buildCommand: pip install -r requirements.txt
+    startCommand: >
+      bash -lc 'gunicorn -w 2 -k gthread -b 0.0.0.0:$PORT "jobLink.app:create_app()"'
+    envVars:
+      # Let Flask know how to reach PostgREST on Render's private network.
+      # We can't interpolate inside YAML, so we pass host:port & add "http://" in code.
+      - key: POSTGREST_HOSTPORT
+        fromService:
+          name: joblink-postgrest
+          type: web
+          property: hostport             # e.g., "joblink-postgrest:10000"
+      - key: FLASK_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      # If you send emails, set real SMTP creds in the dashboard or an env group:
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: APP_BASE_URL                # for links in emails (no localhost)
+        sync: false                      # e.g., https://joblink-web.onrender.com
+
+    healthCheckPath: /                   # Flask responds on /
+
+  # --- PostgREST API in front of Postgres ---
+  - type: web
+    name: joblink-postgrest
+    runtime: docker                      # official PostgREST docker image
+    dockerCommand: >
+      postgrest                             # entrypoint is postgrest
+    envVars:
+      - key: PGRST_DB_URI
+        fromDatabase:
+          name: joblink-db
+          property: connectionString       # Render injects the DB URL
+      - key: PGRST_DB_SCHEMA
+        value: public
+      - key: PGRST_DB_ANON_ROLE
+        value: anon                        # make sure this role exists in DB (below)
+      - key: PGRST_SERVER_PORT
+        value: 10000
+      - key: PGRST_LOG_LEVEL
+        value: info
+      # Optional JWT if you add auth later:
+      # - key: PGRST_JWT_SECRET
+      #   sync: false
+
+    healthCheckPath: /                    # OpenAPI root
+
+databases:
+  - name: joblink-db
+    plan: free                            # upgrade later for production
+    region: oregon
