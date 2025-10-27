@@ -5,7 +5,8 @@ Job routes (Flask) backed by PostgREST.
 - Lists/searches jobs with optional filters.
 - Posts a job (customer-only) via PostgREST.
 - Shows job detail with a WhatsApp deep link.
-- Accept flow currently just redirects to WhatsApp (logging to DB comes later).
+- Accept flow writes to ``accepted_jobs`` through PostgREST before redirecting the
+  worker to the WhatsApp deep link.
 - "My Jobs" placeholder until JWT/RLS + customer_id filtering is enabled.
 
 Notes:
@@ -321,7 +322,7 @@ def accept_job(job_id: int):
     role = (session.get("role") or "").lower()
     if not user_id or role != "worker":
         flash("Please log in as a worker to accept jobs.", "warning")
-        return redirect(url_for("auth.login", next=request.path))
+        return redirect(url_for("auth.login"))
 
     base, _headers = pgrst_base_and_headers()
     token = os.environ.get("PGRST_SERVICE_TOKEN", "")
@@ -346,6 +347,21 @@ def accept_job(job_id: int):
 
     if r.status_code in (200, 201):
         flash("You have accepted the job!", "success")
+        try:
+            job = api.get_job_api(job_id)
+        except Exception:
+            job = None
+
+        if job:
+            contact_norm = normalize_phone(job.get("contact", ""))
+            title = (job.get("title") or "").strip()
+            if contact_norm:
+                message = (
+                    f"Hi, I saw your task '{title}' on JobLink. I'm interested. "
+                    "Is it still available?"
+                )
+                return redirect(wa_link(contact_norm, message))
+
         return redirect(url_for("jobs.job_detail", job_id=job_id))
 
     # Friendly messages for common cases
