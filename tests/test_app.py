@@ -1,10 +1,27 @@
 import re
+from urllib.parse import urlparse, parse_qs
+
 import pytest
 
 # We import the Flask app factory and the in-memory stores
 from app import create_app
 import microjobs.routes as routes
 import microjobs.auth as auth
+
+
+# Ensure in-memory stores exist for tests (app uses PostgREST by default)
+if not hasattr(auth, "USERS"):
+    auth.USERS = []
+if not hasattr(auth, "NEXT_USER_ID"):
+    auth.NEXT_USER_ID = 1
+if not hasattr(routes, "JOBS"):
+    routes.JOBS = []
+if not hasattr(routes, "NEXT_ID"):
+    routes.NEXT_ID = 1
+if not hasattr(routes, "ACCEPTED_JOBS"):
+    routes.ACCEPTED_JOBS = []
+if not hasattr(routes, "NEXT_ACCEPT_ID"):
+    routes.NEXT_ACCEPT_ID = 1
 
 
 @pytest.fixture(autouse=True)
@@ -157,6 +174,18 @@ def test_worker_can_accept_job_and_redirects_to_whatsapp(client):
     assert len(routes.ACCEPTED_JOBS) == 1
     rec = routes.ACCEPTED_JOBS[0]
     assert rec["job_id"] == job_id
+
+
+def test_accept_job_redirects_unauthenticated_users_to_login(client):
+    resp = client.post("/jobs/42/accept", follow_redirects=False)
+    assert resp.status_code in (302, 303)
+
+    location = resp.headers["Location"]
+    parsed = urlparse(location)
+    assert parsed.path == "/auth/login"
+
+    query = parse_qs(parsed.query)
+    assert query.get("next") == ["/jobs/42/accept"]
 
 
 def test_customer_my_jobs_shows_only_their_jobs(client):

@@ -321,7 +321,7 @@ def accept_job(job_id: int):
     role = (session.get("role") or "").lower()
     if not user_id or role != "worker":
         flash("Please log in as a worker to accept jobs.", "warning")
-        return redirect(url_for("account.login"))
+        return redirect(url_for("auth.login", next=request.path))
 
     base, _headers = pgrst_base_and_headers()
     token = os.environ.get("PGRST_SERVICE_TOKEN", "")
