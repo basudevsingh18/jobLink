@@ -190,7 +190,7 @@ def post_job():
         if budget_cents < 0:
             raise ValueError
     except ValueError:
-        flash("budget_cents must be a whole number ($).", "warning")
+        flash("Budget must be a whole number ($).", "warning")
         return render_template(
             "jobs/post_job.html",
             categories=CATEGORIES,
