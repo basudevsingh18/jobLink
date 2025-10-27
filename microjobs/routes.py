@@ -5,7 +5,8 @@ Job routes (Flask) backed by PostgREST.
 - Lists/searches jobs with optional filters.
 - Posts a job (customer-only) via PostgREST.
 - Shows job detail with a WhatsApp deep link.
-- Accept flow currently just redirects to WhatsApp (logging to DB comes later).
+- Accept flow writes to ``accepted_jobs`` through PostgREST before redirecting the
+  worker to the WhatsApp deep link.
 - "My Jobs" placeholder until JWT/RLS + customer_id filtering is enabled.
 
 Notes:
