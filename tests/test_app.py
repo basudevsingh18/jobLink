@@ -286,6 +286,18 @@ def test_worker_can_accept_job_and_redirects_to_whatsapp(client):
     assert record["json"] == {"job_id": job["id"], "worker_id": 2}
 
 
+def test_accept_job_redirects_unauthenticated_users_to_login(client):
+    resp = client.post("/jobs/42/accept", follow_redirects=False)
+    assert resp.status_code in (302, 303)
+
+    location = resp.headers["Location"]
+    parsed = urlparse(location)
+    assert parsed.path == "/auth/login"
+
+    query = parse_qs(parsed.query)
+    assert query.get("next") == ["/jobs/42/accept"]
+
+
 def test_customer_my_jobs_shows_only_their_jobs(client):
     register_user(client, "Alice", "alice@test.com", "1234", "customer")
     login_user(client, "alice@test.com", "1234")
